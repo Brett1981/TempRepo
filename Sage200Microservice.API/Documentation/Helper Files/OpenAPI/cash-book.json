@@ -1,0 +1,2359 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Sage 200 v1 Extra Cash Book",
+    "version": "1.0"
+  },
+  "host": "api.columbus.sage.com",
+  "basePath": "/uk/sage200extra/accounts/v1/",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/banks": {
+      "x-sage-pathtitle": "Banks",
+      "x-sage-changelog": [
+        {
+          "date": "25/04/2018",
+          "title": "Extended operation",
+          "description": "This operation now includes the field 'account_status_type', which represents the status of the bank account. This can either be 'Active' or 'Hidden'."
+        },
+        {
+          "date": "16/09/2020",
+          "title": "Enhanced endpoint fields",
+          "description": "This operation now includes the fields 'bank_account_nominal_reference', 'bank_account_nominal_cost_centre', 'bank_account_nominal_department', 'bank_charges_nominal_reference', 'bank_charges_nominal_cost_centre', 'bank_charges_nominal_department', 'exchange_diff_nominal_reference', 'exchange_diff_nominal_cost_centre', 'exchange_diff_nominal_department', 'bank_account_nominal_code', 'bank_charges_nominal_code', 'exchange_diff_nominal_code' and 'date_time_created'."
+        },
+        {
+          "date": "14/08/2023",
+          "title": "Extended operation",
+          "description": "This endpoint was enhanced with a PUT by Id operation."
+        },
+        {
+          "date": "14/08/2023",
+          "title": "Enhanced endpoint fields",
+          "description": "This operation now includes the fields 'emails', 'memos' and 'websites'."
+        }
+      ],
+      "get": {
+        "summary": "Banks",
+        "description": "Bank accounts can be created in Sage 200 for any type of account that money is paid in/out of, for example, cash, credit cards or, business current account. Bank accounts can be in any currency and all balances are recorded in the currency specific to that bank account.",
+        "operationId": "GetBanks",
+        "responses": {
+          "200": {
+            "description": "The list of banks has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/bank"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Banks"
+        ]
+      },
+      "post": {
+        "summary": "Banks",
+        "description": "Bank accounts can be created in Sage 200 for any type of account that money is paid in/out of, for example, cash, credit cards or, business current account. Bank accounts can be in any currency and all balances are recorded in the currency specific to that bank account.",
+        "operationId": "PostBank",
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Bank",
+            "in": "body",
+            "description": "Bank to add.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/bank"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bank was created. Response body will include the department details.",
+            "schema": {
+              "$ref": "#/definitions/bank"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Banks"
+        ]
+      }
+    },
+    "/banks/{Id}": {
+      "x-sage-pathtitle": "Bank",
+      "get": {
+        "summary": "Bank",
+        "description": "Bank accounts can be created in Sage 200 for any type of account that money is paid in/out of, for example, cash, credit cards or, business current account. Bank accounts can be in any currency and all balances are recorded in the currency specific to that bank account.",
+        "operationId": "GetBank",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the bank.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of bank successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/bank"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Banks"
+        ]
+      },
+      "put": {
+        "summary": "Bank",
+        "description": "Bank accounts can be created in Sage 200 for any type of account that money is paid in/out of, for example, cash, credit cards or, business current account. Bank accounts can be in any currency and all balances are recorded in the currency specific to that bank account.",
+        "operationId": "PutBank",
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the bank.",
+            "required": true,
+            "type": "number"
+          },
+          {
+            "name": "Bank",
+            "in": "body",
+            "description": "Bank account to update in Sage 200 Cash Book.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/bank"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bank account was updated. Response body will include the bank account details.",
+            "schema": {
+              "$ref": "#/definitions/bank"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Banks"
+        ]
+      },
+      "delete": {
+        "summary": "Bank",
+        "description": "Bank accounts can be created in Sage 200 for any type of account that money is paid in/out of, for example, cash, credit cards or, business current account. Bank accounts can be in any currency and all balances are recorded in the currency specific to that bank account.",
+        "operationId": "DeleteBank",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the bank.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Bank was deleted."
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Banks"
+        ]
+      }
+    },
+    "/bank_account_types": {
+      "x-sage-pathtitle": "Bank account types",
+      "get": {
+        "summary": "Bank Account Types",
+        "description": "When working with bank accounts, it is important to know what type of bank account it is.<br /><br /> Use this API endpoint to return the list of bank account types that can be used.",
+        "operationId": "GetBankAccountTypes",
+        "responses": {
+          "200": {
+            "description": "The list of bank account types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/bank_account_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Bank Account Types"
+        ]
+      }
+    },
+    "/electronic_bank_function_types": {
+      "x-sage-pathtitle": "Electronic bank function types",
+      "x-sage-changelog": [
+        {
+          "date": "26/07/2021",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Electronic Bank Function Types",
+        "description": "Use this API endpoint to return the list of e-banking function types that can be used with e-banking.",
+        "operationId": "GetElectronicBankFunctionTypes",
+        "responses": {
+          "200": {
+            "description": "The list of electronic bank function types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/electronic_bank_function_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Electronic Bank Function Types"
+        ]
+      }
+    },
+    "/bank_entry_types": {
+      "x-sage-pathtitle": "Bank entry types",
+      "get": {
+        "summary": "Bank Entry Types",
+        "description": "When working with bank entries, it is important to know what type of bank entry it is.<br /><br />Use this API endpoint to return the list of bank entry types that can be used.",
+        "operationId": "GetBankEntryTypes",
+        "responses": {
+          "200": {
+            "description": "The list of bank entry types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/bank_entry_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Bank Entry Types"
+        ]
+      }
+    },
+    "/lookup_banks": {
+      "x-sage-pathtitle": "Lookup Banks",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Lookup Banks",
+        "description": "Gets a subset of bank account information for populating a lookup.",
+        "operationId": "GetLookupBanks",
+        "responses": {
+          "200": {
+            "description": "Get a collection of Bank Accounts for populating a lookup.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/lookup_bank"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Lookup Banks"
+        ]
+      }
+    },
+    "/bank_receipt": {
+      "x-sage-pathtitle": "Bank receipt",
+      "post": {
+        "summary": "Bank Receipt",
+        "description": "Receipts are used to record money received against a bank account (Sage 200 Standard and versions of Professional released after July 2017). In the Sage 200 app, this is equivalent to making a Nominal Vatable Receipt or a Non-Vatable Receipt. <br /><br />Posting a bank receipt does not actually create a 'bank receipt' entity, but a Posted Transaction of type 'BankAccountEntryType.Receipt', therefore it is not possible to 'get' a bank  receipt using the same API endpoint after it has been posted. Posting a bank receipt returns a URN (Unique Reference Number) that can be used to find the corresponding posted transaction.<br /><br />Note: Before posting bank receipts via the API, at least one bank account must exist within Sage 200.",
+        "operationId": "PostBankReceipt",
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Bank receipt",
+            "in": "body",
+            "description": "Bank receipt to add.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/bank_receipt"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bank receipt was created. Response body will include the urn of the transactions created.",
+            "schema": {
+              "$ref": "#/definitions/urn"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Bank Receipt"
+        ]
+      }
+    },
+    "/bank_payment": {
+      "x-sage-pathtitle": "Bank payment",
+      "post": {
+        "summary": "Bank Payment",
+        "description": "Payments are used to record money paid from a bank account (Sage 200 Standard and versions of Professional released after July 2017). In the Sage 200 app, this is equivalent to making a Nominal Vatable Payment or a Non-Vatable Payment. <br /><br />Posting a bank payment does not actually create a 'bank payment' entity, but a Posted Transaction of type 'BankAccountEntryType.Payment', therefore it is not possible to 'get' a bank payment using the same API endpoint after it has been posted. Posting a bank payment returns a URN (Unique Reference Number) that can be used to find the corresponding posted transaction.<br /><br />Note: Before posting a bank payment via the API, at least one bank account must exist within Sage 200.",
+        "operationId": "PostBankPayment",
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "Bank payment",
+            "in": "body",
+            "description": "Bank payment to add.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/bank_payment"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bank payment was created. Response body will include the urn of the transactions created.",
+            "schema": {
+              "$ref": "#/definitions/urn"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Bank Payment"
+        ]
+      }
+    },
+    "/bank_views": {
+      "x-sage-pathtitle": "Bank views",
+      "x-sage-changelog": [
+        {
+          "date": "26/07/2021",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Bank Views",
+        "description": "This resource returns the details of all bank accounts. The default sort (orderby) field is by 'code' ascending.",
+        "operationId": "GetBankViews",
+        "responses": {
+          "200": {
+            "description": "The list of bank accounts has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/bank_view"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Bank Views"
+        ]
+      }
+    },
+    "/bank_transfer": {
+      "x-sage-pathtitle": "Bank transfer",
+      "post": {
+        "summary": "Bank Transfer",
+        "description": "Transfer money from one bank to another.",
+        "operationId": "PostBankTransfer",
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "bank_transfer",
+            "in": "body",
+            "description": "Details of the bank transfer.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/bank_transfer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The bank transfer was successful.",
+            "schema": {
+              "$ref": "#/definitions/bank_transfer"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "tags": [
+          "Bank Transfer"
+        ]
+      }
+    },
+    "/bank_posted_transactions": {
+      "x-sage-pathtitle": "Bank posted transactions",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "Enhanced endpoint field",
+          "description": "This operation now includes the field 'date_time_created'."
+        },
+        {
+          "date": "14/12/2020",
+          "title": "Enhanced endpoint fields",
+          "description": "This operation now includes the fields 'last_statement_date', 'statement_page_number' and 'source'."
+        },
+        {
+          "date": "26/07/2021",
+          "title": "Enhanced endpoint field",
+          "description": "This operation now includes the field 'cheque_currency'."
+        }
+      ],
+      "get": {
+        "summary": "Bank Posted Transactions",
+        "description": "Bank posted transactions are created when transactions such as receipts or payments are posted against the Cash Book.<br /><br />It is not possible to use this API resource to create posted transactions. To post a transaction, the necessary API resource must be invoked.",
+        "operationId": "GetBankPostedTransactions",
+        "responses": {
+          "200": {
+            "description": "Get a collection of posted bank transactions.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/bank_posted_transaction"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Bank Posted Transactions"
+        ]
+      }
+    },
+    "/bank_posted_transactions/{Id}": {
+      "x-sage-pathtitle": "Bank posted transaction",
+      "get": {
+        "summary": "Bank Posted Transaction",
+        "description": "Bank posted transactions are created when transactions such as receipts or payments are posted against the Cash Book.<br /><br />It is not possible to use this API resource to create posted transactions. To post a transaction, the necessary API resource must be invoked.",
+        "operationId": "GetBankPostedTransaction",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the transaction.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Get a single posted bank transaction.",
+            "schema": {
+              "$ref": "#/definitions/bank_posted_transaction"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Bank Posted Transactions"
+        ]
+      }
+    },
+    "/banks/{bankId}/bank_posted_transactions": {
+      "x-sage-pathtitle": "Bank posted transactions for bank account",
+      "get": {
+        "summary": "Bank Posted Transactions For Bank Account",
+        "description": "Bank posted transactions are created when transactions such as receipts or payments are posted against the Cash Book.<br /><br />It is not possible to use this API resource to create posted transactions. To post a transaction, the necessary API resource must be invoked.",
+        "operationId": "GetBankPostedTransactionsForBankAccount",
+        "parameters": [
+          {
+            "name": "bankId",
+            "in": "path",
+            "description": "Unique Id of the bank account.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Return transactions for a single bank account.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/bank_posted_transaction"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Bank Posted Transactions"
+        ]
+      }
+    },
+    "/cash_book_settings": {
+      "x-sage-pathtitle": "Cash Book settings",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Cash Book Settings",
+        "description": "The Cash Book settings are used to configure application behaviour with respect to the Cash Book module.<br/><br/>Settings include the default bank account.",
+        "operationId": "GetCashBookSettings",
+        "responses": {
+          "200": {
+            "description": "Cash Book settings successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/cash_book_settings"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Cash Book Settings"
+        ]
+      }
+    },
+    "/cash_book_settings/{Id}": {
+      "x-sage-pathtitle": "Cash Book setting",
+      "get": {
+        "summary": "Cash Book Setting",
+        "description": "The Cash Book settings are used to configure application behaviour with respect to the Cash Book module.<br/><br/>Settings include the default bank account.",
+        "operationId": "GetCashBookSetting",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the Cash Book settings.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cash Book settings successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/cash_book_settings"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Cash Book Settings"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "bank": {
+      "type": "object",
+      "description": "Bank accounts can be created in Sage 200 for any type of account that money is paid in/out of, for example, cash, credit cards or, business current account. Bank accounts can be in any currency and all balances are recorded in the currency specific to that bank account.",
+      "required": [
+        "code",
+        "sort_code"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank account record Id.",
+          "readOnly": true
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "Bank account code."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Bank description."
+        },
+        "sort_code": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Bank sort code."
+        },
+        "account_no": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Bank account number."
+        },
+        "bank_name": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Bank name."
+        },
+        "account_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Bank account type."
+        },
+        "account_status_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The status of the bank account (Sage 200 Standard and versions of Professional released after February 2018). For example, this can either be 'Active' or 'Hidden'.",
+          "default": "AccountStatusActive"
+        },
+        "balance": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 0,
+          "description": "Bank balance.",
+          "readOnly": true
+        },
+        "balance_in_base": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 0,
+          "description": "Bank balance in base currency.",
+          "readOnly": true
+        },
+        "overdraft_limit": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 0,
+          "description": "Bank overdraft limit."
+        },
+        "account_name": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Account name."
+        },
+        "iban": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "International bank account number."
+        },
+        "bic": {
+          "type": "string",
+          "maxLength": 11,
+          "description": "Bank identifier code."
+        },
+        "statement_balance": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 0,
+          "description": "Last statement balance.",
+          "readOnly": true
+        },
+        "statement_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last statement date.",
+          "readOnly": true
+        },
+        "account_currency_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency record Id."
+        },
+        "bank_account_nominal_reference": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "The banks bank account nominal code reference."
+        },
+        "bank_account_nominal_cost_centre": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks bank account nominal code cost centre code."
+        },
+        "bank_account_nominal_department": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks bank account nominal code department code."
+        },
+        "bank_charges_nominal_reference": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "The banks bank charges nominal code reference."
+        },
+        "bank_charges_nominal_cost_centre": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks bank charges nominal code cost centre code."
+        },
+        "bank_charges_nominal_department": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks bank charges nominal code department code."
+        },
+        "exchange_diff_nominal_reference": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "The banks exchange differences nominal code reference."
+        },
+        "exchange_diff_nominal_cost_centre": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks exchange differences nominal code cost centre code."
+        },
+        "exchange_diff_nominal_department": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks exchange differences nominal code department code."
+        },
+        "account_currency": {
+          "type": "object",
+          "description": "Account currency.",
+          "readOnly": true
+        },
+        "bank_account_nominal_code": {
+          "type": "object",
+          "description": "The banks bank account nominal code.",
+          "readOnly": true
+        },
+        "bank_address": {
+          "type": "object",
+          "description": "Bank address.",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Bank addresss record Id.",
+              "readOnly": true
+            },
+            "contact": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "Address contact name."
+            },
+            "country": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "Address country."
+            },
+            "address_1": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "Address line 1."
+            },
+            "address_2": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "Address line 2."
+            },
+            "address_3": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "Address line 3."
+            },
+            "address_4": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "Address line 4."
+            },
+            "city": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "City."
+            },
+            "county": {
+              "type": "string",
+              "maxLength": 60,
+              "description": "County."
+            },
+            "postcode": {
+              "type": "string",
+              "maxLength": 10,
+              "description": "Postcode."
+            },
+            "date_time_created": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The date and time this entity was created (UTC).",
+              "readOnly": true
+            },
+            "date_time_updated": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The date and time this entity was last updated (UTC).",
+              "readOnly": true
+            }
+          }
+        },
+        "bank_charges_nominal_code": {
+          "type": "object",
+          "description": "The banks bank charges nominal code.",
+          "readOnly": true
+        },
+        "exchange_diff_nominal_code": {
+          "type": "object",
+          "description": "The banks exchange differences nominal code.",
+          "readOnly": true
+        },
+        "bank_contacts": {
+          "type": "array",
+          "description": "Collection of bank contact values.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Bank account contact record Id.",
+                "readOnly": true
+              },
+              "bank_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Bank account record Id.",
+                "readOnly": true
+              },
+              "type": {
+                "type": "string",
+                "maxLength": 20,
+                "description": "The type of the contact value."
+              },
+              "address": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "Bank contact value."
+              },
+              "is_to_delete": {
+                "type": "boolean",
+                "description": "When updating an existing bank account, whether to delete this contact from the collection of bank account contacts."
+              },
+              "date_time_created": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time this entity was created (UTC).",
+                "readOnly": true
+              },
+              "date_time_updated": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time this entity was last updated (UTC).",
+                "readOnly": true
+              }
+            }
+          }
+        },
+        "emails": {
+          "type": "array",
+          "description": "Collection of bank emails.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Bank account email address record Id.",
+                "readOnly": true
+              },
+              "bank_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Bank account record Id.",
+                "readOnly": true
+              },
+              "email": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "Email address."
+              },
+              "is_default": {
+                "type": "boolean",
+                "description": "Flag to indicate if this is the default email address."
+              },
+              "is_to_delete": {
+                "type": "boolean",
+                "description": "When updating an existing bank account, whether to delete this email from the collection of bank account emails."
+              },
+              "date_time_created": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time this entity was created (UTC).",
+                "readOnly": true
+              },
+              "date_time_updated": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time this entity was last updated (UTC).",
+                "readOnly": true
+              }
+            }
+          }
+        },
+        "memos": {
+          "type": "array",
+          "description": "Collection of bank memos.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Bank account memo record Id.",
+                "readOnly": true
+              },
+              "bank_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Bank account record Id.",
+                "readOnly": true
+              },
+              "note": {
+                "type": "string",
+                "maxLength": 1000,
+                "description": "The memo text."
+              },
+              "is_active": {
+                "type": "boolean",
+                "description": "True if memo status is active, false if it is inactive."
+              },
+              "is_to_delete": {
+                "type": "boolean",
+                "description": "When updating an existing bank account, whether to delete this memo from the collection of bank account memos."
+              },
+              "created_by": {
+                "type": "string",
+                "maxLength": 20,
+                "description": "The user that created the memo.",
+                "readOnly": true
+              },
+              "date_time_created": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time this entity was created (UTC).",
+                "readOnly": true
+              },
+              "date_time_updated": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time this entity was last updated (UTC).",
+                "readOnly": true
+              }
+            }
+          }
+        },
+        "websites": {
+          "type": "array",
+          "description": "Collection of bank websites.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Bank account website record Id.",
+                "readOnly": true
+              },
+              "bank_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Bank account record Id.",
+                "readOnly": true
+              },
+              "website": {
+                "type": "string",
+                "maxLength": 200,
+                "description": "The web address."
+              },
+              "is_default": {
+                "type": "boolean",
+                "description": "Flag to indicate if this is the default website for the customer contact."
+              },
+              "is_to_delete": {
+                "type": "boolean",
+                "description": "When updating an existing bank account, whether to delete this website from the collection of bank account websites."
+              },
+              "date_time_created": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time this entity was created (UTC).",
+                "readOnly": true
+              },
+              "date_time_updated": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The date and time this entity was last updated (UTC).",
+                "readOnly": true
+              }
+            }
+          }
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "bank_account_type": {
+      "type": "object",
+      "description": "When working with bank accounts, it is important to know what type of bank account it is.<br /><br /> Use this API endpoint to return the list of bank account types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank account type record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Description of the bank account type.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "electronic_bank_function_type": {
+      "type": "object",
+      "description": "Use this API endpoint to return the list of e-banking function types that can be used with e-banking.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Electronic bank function type record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Description of the electronic bank function type.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "bank_entry_type": {
+      "type": "object",
+      "description": "When working with bank entries, it is important to know what type of bank entry it is. <br /><br />Use this API endpoint to return the list of bank entry types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank entry type record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Description of the bank entry type.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "lookup_bank": {
+      "type": "object",
+      "description": "A subset of bank account information for populating a lookup.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank account record Id.",
+          "readOnly": true
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "Bank account code."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Bank description."
+        },
+        "account_status_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The status of the bank account. For example, this can either be 'Active' or 'Hidden'.",
+          "default": "AccountStatusActive"
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "bank_receipt": {
+      "type": "object",
+      "description": "Receipts are used to record money received against a bank account (Sage 200 Standard and versions of Professional released after July 2017). In the Sage 200 app, this is equivalent to making a Nominal Vatable Receipt or a Non-Vatable Receipt. <br /><br />Posting a bank receipt does not actually create a 'bank receipt' entity, but a Posted Transaction of type 'BankAccountEntryType.Receipt', therefore it is not possible to 'get' a bank receipt using the same API endpoint after it has been posted. Posting a bank receipt returns a URN (Unique Reference Number) that can be used to find the corresponding posted transaction.<br /><br />Note: Before posting bank receipts via the API, at least one bank account must exist within Sage 200.",
+      "required": [
+        "bank_id",
+        "nominal_analysis_items"
+      ],
+      "properties": {
+        "bank_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank record Id that the receipt is for. If the bank account does not have the same currency as the base currency, then additional properties can be set for the currency and exchange rate.<br/><br/>Note: If a default bank account has been set up in the system, then you do not need to specify the bank account Id, if that is the intended bank for the receipt."
+        },
+        "transaction_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Transaction date. This defaults to the current system date."
+        },
+        "reference": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Receipt reference (can be the cheque number)."
+        },
+        "second_reference": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Receipt second reference."
+        },
+        "tax_registration_number": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "The tax registration number of the person the money has been received from (Sage 200 Education Online only)."
+        },
+        "narrative": {
+          "type": "string",
+          "maxLength": 6000,
+          "description": "The description that is set to default on each nominal analysis item."
+        },
+        "exchange_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The exchange rate between the bank account and the system. This is only applicable if the bank account currency specified is different to the base currency and will default to the bank currency exchange rate."
+        },
+        "cheque_currency_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The currency Id of the receipt. This is only applicable if the bank account currency specified is different to the base currency and will default to the bank account currency."
+        },
+        "cheque_exchange_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The exchange rate between the cheque and the bank account. This is only applicable if the bank account currency specified is different to the base currency and will default to the cheque currency exchange rate."
+        },
+        "tax_code_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Tax code record Id. This is only applicable if the bank account currency specified is different to the base currency and will default to the default tax code Id."
+        },
+        "cheque_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "Value of the receipt. This is only applicable if the bank account currency specified is different to the base currency."
+        },
+        "cheque_goods_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The net value of the receipt. This is only applicable if the bank account currency specified is different to the base currency."
+        },
+        "cheque_tax_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The tax element of the receipt. This is only applicable if the bank account currency specified is different to the base currency."
+        },
+        "nominal_analysis_items": {
+          "type": "array",
+          "description": "The nominal analysis lines that relate to the receipt, such as the account code, values and date.",
+          "items": {
+            "type": "object",
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 8,
+                "description": "Nominal account code."
+              },
+              "cost_centre": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Cost centre. If specified must correspond to the code."
+              },
+              "department": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Department. If specified must correspond to the code."
+              },
+              "narrative": {
+                "type": "string",
+                "maxLength": 6000,
+                "description": "The description."
+              },
+              "gross_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Gross receipt value to post to the nominal account."
+              },
+              "goods_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Net value to post to the nominal account. This is not applicable if the bank account currency specified is different to the base currency."
+              },
+              "tax_code_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Tax code Id. This is not applicable if the bank account currency specified is different to the base currency and will default to the default tax code Id"
+              },
+              "tax_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Tax value to post to the nominal account. This is not applicable if the bank account currency specified is different to the base currency."
+              },
+              "transaction_date": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Transaction date. This defaults to the current system date."
+              },
+              "reference": {
+                "type": "string",
+                "maxLength": 40,
+                "description": "Receipt reference."
+              }
+            }
+          }
+        },
+        "bank_charges": {
+          "type": "array",
+          "description": "The nominal analysis items which relate to bank charges for the receipt. This is only applicable if the bank account currency specified is different to the base currency.",
+          "items": {
+            "type": "object",
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 8,
+                "description": "Nominal account code."
+              },
+              "cost_centre": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Cost centre. If specified must correspond to the code."
+              },
+              "department": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Department. If specified must correspond to the code."
+              },
+              "value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Value to post to the nominal account."
+              }
+            }
+          }
+        },
+        "nominal_journal_items": {
+          "type": "array",
+          "description": "Historically used for the nominal analysis lines that relate to the receipt, such as the account code, values and date. Superseded by nominal_analysis_items. This can be used in place of nominal_analysis_items, however, if both are present in the request, nominal_analysis_items will be used.",
+          "items": {
+            "type": "object",
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 8,
+                "description": "Nominal account code."
+              },
+              "cost_centre": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Cost centre. If specified must correspond to the code."
+              },
+              "department": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Department. If specified must correspond to the code."
+              },
+              "narrative": {
+                "type": "string",
+                "maxLength": 6000,
+                "description": "The description."
+              },
+              "gross_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Gross receipt value to post to the nominal account."
+              },
+              "goods_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Net value to post to the nominal account. This is not applicable if the bank account currency specified is different to the base currency."
+              },
+              "tax_code_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Tax code Id. This is not applicable if the bank account currency specified is different to the base currency and will default to the default tax code Id"
+              },
+              "tax_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Tax value to post to the nominal account. This is not applicable if the bank account currency specified is different to the base currency."
+              },
+              "transaction_date": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Transaction date. This defaults to the current system date."
+              },
+              "reference": {
+                "type": "string",
+                "maxLength": 40,
+                "description": "Receipt reference."
+              }
+            }
+          }
+        }
+      }
+    },
+    "bank_payment": {
+      "type": "object",
+      "description": "Payments are used to record money paid from a bank account (Sage 200 Standard and versions of Professional released after July 2017). In the Sage 200 app, this is equivalent to making a Nominal Vatable Payment or a Non-Vatable Payment. <br /><br />Posting a bank payment does not actually create a 'bank payment' entity, but a Posted Transaction of type 'BankAccountEntryType.Payment', therefore it is not possible to 'get' a bank payment using the same API endpoint after it has been posted. Posting a bank payment returns a URN (Unique Reference Number) that can be used to find the corresponding posted transaction.<br /><br />Note: Before posting a bank payment via the API, at least one bank account must exist within Sage 200.",
+      "required": [
+        "bank_id",
+        "nominal_analysis_items"
+      ],
+      "properties": {
+        "bank_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank record Id that the payment is for. If the bank account does not have the same currency as the base currency, then additional properties can be set for the currency and exchange rate.<br/><br/>Note: If a default bank account has been set up in the system, then you do not need to specify the bank account Id, if that is the intended bank for the payment."
+        },
+        "transaction_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Transaction date. This defaults to the current system date."
+        },
+        "reference": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Payment reference (can be the cheque number)."
+        },
+        "second_reference": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Payment second reference."
+        },
+        "tax_registration_number": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "The tax registration number of the person the money has been paid to (Sage 200 Education Online only)."
+        },
+        "tax_code_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Tax code record Id. This is only applicable if the bank account currency specified is different to the base currency and will default to the default tax code Id."
+        },
+        "narrative": {
+          "type": "string",
+          "maxLength": 6000,
+          "description": "The description that is set to default on each nominal analysis item."
+        },
+        "exchange_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The exchange rate between the bank account and the system. This is only applicable if the bank account currency specified is different to the base currency and will default to the bank currency exchange rate."
+        },
+        "cheque_currency_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The currency Id of the payment. This is only applicable if the bank account currency specified is different to the base currency and will default to the bank account currency."
+        },
+        "cheque_exchange_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The exchange rate between the cheque and the bank account. This is only applicable if the bank account currency specified is different to the base currency and will default to the cheque currency exchange rate."
+        },
+        "cheque_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "Value of the payment. This is only applicable if the bank account currency specified is different to the base currency."
+        },
+        "cheque_goods_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The net value of the payment. This is only applicable if the bank account currency specified is different to the base currency."
+        },
+        "cheque_tax_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The tax element of the payment. This is only applicable if the bank account currency specified is different to the base currency."
+        },
+        "nominal_analysis_items": {
+          "type": "array",
+          "description": "The nominal analysis lines that relate to the payment, such as the account code, values and date.",
+          "items": {
+            "type": "object",
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 8,
+                "description": "Nominal account code."
+              },
+              "cost_centre": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Cost centre. If specified must correspond to the code."
+              },
+              "department": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Department. If specified must correspond to the code."
+              },
+              "narrative": {
+                "type": "string",
+                "maxLength": 6000,
+                "description": "The description."
+              },
+              "gross_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Gross payment value to post to the nominal account."
+              },
+              "goods_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Net value to post to the nominal account. This is not applicable if the bank account currency specified is different to the base currency."
+              },
+              "tax_code_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Tax code Id. This is not applicable if the bank account currency specified is different to the base currency and will default to the default tax code Id"
+              },
+              "tax_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Tax value to post to the nominal account. This is not applicable if the bank account currency specified is different to the base currency."
+              },
+              "transaction_date": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Transaction date. This defaults to the current system date."
+              },
+              "reference": {
+                "type": "string",
+                "maxLength": 40,
+                "description": "Payment reference."
+              }
+            }
+          }
+        },
+        "bank_charges": {
+          "type": "array",
+          "description": "The nominal analysis items which relate to bank charges for the payment. This is only applicable if the bank account currency specified is different to the base currency.",
+          "items": {
+            "type": "object",
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 8,
+                "description": "Nominal account code."
+              },
+              "cost_centre": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Cost centre. If specified must correspond to the code."
+              },
+              "department": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Department. If specified must correspond to the code."
+              },
+              "value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Value to post to the nominal account."
+              }
+            }
+          }
+        },
+        "nominal_journal_items": {
+          "type": "array",
+          "description": "Historically used for the nominal analysis lines that relate to the payment, such as the account code, values and date. Superseded by nominal_analysis_items. This can be used in place of nominal_analysis_items, however, if both are present in the request, nominal_analysis_items will be used.",
+          "items": {
+            "type": "object",
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 8,
+                "description": "Nominal account code."
+              },
+              "cost_centre": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Cost centre. If specified must correspond to the code."
+              },
+              "department": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Department. If specified must correspond to the code."
+              },
+              "narrative": {
+                "type": "string",
+                "maxLength": 6000,
+                "description": "The description."
+              },
+              "gross_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Gross payment value to post to the nominal account."
+              },
+              "goods_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Net value to post to the nominal account. This is not applicable if the bank account currency specified is different to the base currency."
+              },
+              "tax_code_id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Tax code Id. This is not applicable if the bank account currency specified is different to the base currency and will default to the default tax code Id"
+              },
+              "tax_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Tax value to post to the nominal account. This is not applicable if the bank account currency specified is different to the base currency."
+              },
+              "transaction_date": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Transaction date. This defaults to the current system date."
+              },
+              "reference": {
+                "type": "string",
+                "maxLength": 40,
+                "description": "Payment reference."
+              }
+            }
+          }
+        }
+      }
+    },
+    "bank_view": {
+      "type": "object",
+      "description": "This resource returns the details of all bank accounts. The default sort (orderby) field is by 'code' ascending.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank account record Id.",
+          "readOnly": true
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "Bank account Code.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Bank description.",
+          "readOnly": true
+        },
+        "sort_code": {
+          "type": "string",
+          "maxLength": 10,
+          "description": "Bank sort code.",
+          "readOnly": true
+        },
+        "account_no": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Bank account number.",
+          "readOnly": true
+        },
+        "bank_name": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Bank name.",
+          "readOnly": true
+        },
+        "account_type_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank account type Id.",
+          "readOnly": true
+        },
+        "account_status_type_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The status of the bank account Id (Sage 200 Standard and versions of Professional released after February 2018). For example, this can either be 'Active' or 'Hidden'.",
+          "readOnly": true
+        },
+        "balance": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 0,
+          "description": "Bank balance.",
+          "readOnly": true
+        },
+        "balance_in_base": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 0,
+          "description": "Bank balance in base currency.",
+          "readOnly": true
+        },
+        "overdraft_limit": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 0,
+          "description": "Bank overdraft limit.",
+          "readOnly": true
+        },
+        "account_name": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Account name.",
+          "readOnly": true
+        },
+        "iban": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "International bank account number.",
+          "readOnly": true
+        },
+        "bic": {
+          "type": "string",
+          "maxLength": 11,
+          "description": "Bank identifier code.",
+          "readOnly": true
+        },
+        "statement_balance": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 0,
+          "description": "Last statement balance.",
+          "readOnly": true
+        },
+        "statement_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last statement date.",
+          "readOnly": true
+        },
+        "statement_page_number": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Page of statement item appears on.",
+          "readOnly": true
+        },
+        "currency_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency record Id.",
+          "readOnly": true
+        },
+        "currency_name": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "The customer currency name.",
+          "readOnly": true
+        },
+        "currency_symbol": {
+          "type": "string",
+          "maxLength": 4,
+          "description": "Currency symbol.",
+          "readOnly": true
+        },
+        "currency_iso_code_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency ISO code record Id.",
+          "readOnly": true
+        },
+        "currency_iso_code": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "ISO currency code.",
+          "readOnly": true
+        },
+        "currency_iso_code_name": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "ISO currency name.",
+          "readOnly": true
+        },
+        "bank_account_nominal_reference": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "The banks bank account nominal code reference.",
+          "readOnly": true
+        },
+        "bank_account_nominal_cost_centre": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks bank account nominal code cost centre code.",
+          "readOnly": true
+        },
+        "bank_account_nominal_department": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks bank account nominal code department code.",
+          "readOnly": true
+        },
+        "bank_charges_nominal_reference": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "The banks bank charges nominal code reference.",
+          "readOnly": true
+        },
+        "bank_charges_nominal_cost_centre": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks bank charges nominal code cost centre code.",
+          "readOnly": true
+        },
+        "bank_charges_nominal_department": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks bank charges nominal code department code.",
+          "readOnly": true
+        },
+        "exchange_diff_nominal_reference": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "The banks exchange differences nominal code reference.",
+          "readOnly": true
+        },
+        "exchange_diff_nominal_cost_centre": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks exchange differences nominal code cost centre code.",
+          "readOnly": true
+        },
+        "exchange_diff_nominal_department": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The banks exchange differences nominal code department code.",
+          "readOnly": true
+        },
+        "electronic_bank": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Electronic banking service.",
+          "readOnly": true
+        },
+        "electronic_bank_function_id": {
+          "type": "object",
+          "description": "Electronic banking functions Id.",
+          "readOnly": true
+        }
+      }
+    },
+    "bank_transfer": {
+      "type": "object",
+      "description": "<p>Bank transfers are used to transfer money from one bank to another. In the Sage 200 app, this is equivalent to making an Inter Account Transfer.</p><p>Note: before posting a bank transfer via the API both the bank you are transferring from, and the bank you are transferring to, must exist within Sage 200.</p>",
+      "required": [
+        "bank_from_id",
+        "bank_to_id",
+        "payment_value"
+      ],
+      "properties": {
+        "bank_from_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The unique Id of the bank the payment will transfer from."
+        },
+        "bank_to_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The unique Id of the bank the payment will transfer to."
+        },
+        "narrative": {
+          "type": "string",
+          "maxLength": 6000,
+          "description": "The narrative for the bank transfer."
+        },
+        "reference": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "The reference for the bank transfer."
+        },
+        "second_reference": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "A second reference for the bank transfer."
+        },
+        "transaction_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date of the bank transfer."
+        },
+        "payment_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The amount to transfer."
+        },
+        "receipt_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The receipt value of the bank transfer. This is only applicable if either of the bank accounts currency specified is different to the base currency."
+        },
+        "exchange_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The exchange rate used for the bank transfer. This is only applicable if either of the bank accounts currency specified is different to the base currency."
+        },
+        "commission_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The amount of commission associated with the bank transfer. This is only applicable if either of the bank accounts currency specified is different to the base currency."
+        },
+        "commission_code": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "The commission nominal code for the bank transfer. This is only applicable if either of the bank accounts currency specified is different to the base currency."
+        },
+        "commission_cost_centre": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The commission cost centre for the bank transfer. This is only applicable if either of the bank accounts currency specified is different to the base currency."
+        },
+        "commission_department": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The commission department for the bank transfer. This is only applicable if either of the bank accounts currency specified is different to the base currency."
+        },
+        "commission_payer": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Who will pay the commission on the bank transfer. The accepted values are PaymentBank or ReceiptBank. This is only applicable if either of the bank accounts currency specified is different to the base currency."
+        },
+        "payment_to_base_exchange_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The exchange rate to convert from the payment_value currency to the base currency. This is only applicable if the bank account from currency specified is different to the base currency."
+        },
+        "receipt_to_base_exchange_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The exchange rate to convert from the receipt_value currency to the base currency. This is only applicable if the bank account to currency specified is different to the base currency."
+        },
+        "exchange_difference_code": {
+          "type": "string",
+          "maxLength": 8,
+          "description": "The exchange difference nominal code for the bank transfer. This is only applicable if either of payment_to_base_exchange_rate or receipt_to_base_exchange_rate are changed."
+        },
+        "exchange_difference_cost_centre": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The exchange difference cost centre for the bank transfer. This is only applicable if either of payment_to_base_exchange_rate or receipt_to_base_exchange_rate are changed."
+        },
+        "exchange_difference_department": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "The exchange difference department for the bank transfer. This is only applicable if either of payment_to_base_exchange_rate or receipt_to_base_exchange_rate are changed."
+        }
+      }
+    },
+    "urn": {
+      "type": "object",
+      "description": "This is the description of the urn.",
+      "properties": {
+        "urn": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Unique reference number."
+        }
+      }
+    },
+    "bank_posted_transaction": {
+      "type": "object",
+      "description": "Bank posted transactions are created when transactions such as receipts or payments are posted against the Cash Book.<br /><br />It is not possible to use this API resource to create posted transactions. To post a transaction, the necessary API resource must be invoked.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Id."
+        },
+        "bank_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Bank Id."
+        },
+        "bank_transaction_type": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Transaction type."
+        },
+        "entry_description": {
+          "type": "string",
+          "maxLength": 6000,
+          "description": "Transaction description."
+        },
+        "reference": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Transaction reference."
+        },
+        "second_reference": {
+          "type": "string",
+          "maxLength": 40,
+          "description": "Second reference."
+        },
+        "transaction_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Transaction date."
+        },
+        "posted_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Posted date."
+        },
+        "cheque_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "Value of the entry."
+        },
+        "cheque_discount_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "Entry discount value."
+        },
+        "cheque_to_account_currency_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "Exchange rate between the bank account currency and the cheque currency."
+        },
+        "bank_cheque_to_base_currency_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "Exchange rate between the bank account and the company base currency."
+        },
+        "cheque_currency_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency Id."
+        },
+        "last_statement_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The statement date of the last bank statement to which the transaction was reconciled."
+        },
+        "statement_page_number": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The page number of the bank statement to which the transaction was reconciled."
+        },
+        "source": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Ledger type."
+        },
+        "urn": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Unique reference number."
+        },
+        "user_name": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "User who entered the transaction."
+        },
+        "tax_analysis_items": {
+          "type": "array",
+          "description": "Tax analysis items.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64",
+                "description": "Tax code Id"
+              },
+              "code": {
+                "type": "integer",
+                "format": "int16",
+                "description": "Tax code."
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "Tax code name."
+              },
+              "entry_type": {
+                "type": "string",
+                "maxLength": 20,
+                "description": "The type of the tax code entry."
+              },
+              "goods_amount": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Goods amount."
+              },
+              "tax_amount": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Tax amount."
+              },
+              "tax_discount_amount": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Tax discount amount."
+              }
+            }
+          }
+        },
+        "nominal_analysis_items": {
+          "type": "array",
+          "description": "Nominal analysis items.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "maxLength": 8,
+                "description": "Nominal account code."
+              },
+              "cost_centre": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Cost centre."
+              },
+              "department": {
+                "type": "string",
+                "maxLength": 3,
+                "description": "Department."
+              },
+              "name": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "Nominal name."
+              },
+              "location": {
+                "type": "string",
+                "maxLength": 30,
+                "description": "Location of the associated nominal transaction."
+              },
+              "reference": {
+                "type": "string",
+                "maxLength": 40,
+                "description": "Reference."
+              },
+              "narrative": {
+                "type": "string",
+                "maxLength": 6000,
+                "description": "Narrative."
+              },
+              "value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Goods value."
+              },
+              "base_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Value in base currency."
+              },
+              "transaction_analysis_code": {
+                "type": "string",
+                "maxLength": 20,
+                "description": "The transaction analysis code used on the nominal analysis item. This requires that the ledger settings allow additional analysis and that the code is valid"
+              },
+              "source": {
+                "type": "string",
+                "maxLength": 30,
+                "description": "Source ledger"
+              }
+            }
+          }
+        },
+        "trade_items": {
+          "type": "array",
+          "description": "Trade items.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "account_number": {
+                "type": "string",
+                "description": "Account number."
+              },
+              "account_name": {
+                "type": "string",
+                "maxLength": 60,
+                "description": "Account name."
+              },
+              "trading_entry_type": {
+                "type": "string",
+                "maxLength": 30,
+                "description": "Trading entry type."
+              },
+              "entry_type_string": {
+                "type": "string",
+                "maxLength": 30,
+                "description": "Trading entry type string."
+              },
+              "reference": {
+                "type": "string",
+                "maxLength": 40,
+                "description": "Reference."
+              },
+              "gross_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Gross value."
+              },
+              "tax_value": {
+                "type": "number",
+                "format": "decimal 2dp",
+                "description": "Tax value."
+              },
+              "transaction_date": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Transaction date."
+              },
+              "urn": {
+                "type": "integer",
+                "format": "int32",
+                "description": "Unique reference number."
+              }
+            }
+          }
+        },
+        "bank": {
+          "type": "object",
+          "description": "Bank posted transactions bank.",
+          "readOnly": true
+        },
+        "cheque_currency": {
+          "type": "object",
+          "description": "Bank posted transactions currency.",
+          "readOnly": true
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "cash_book_settings": {
+      "type": "object",
+      "description": "The Cash Book settings are used to configure application behaviour with respect to the Cash Book module.<br/><br/>Settings include the default bank account.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Cash Book Settings record Id.",
+          "readOnly": true
+        },
+        "default_bank_account_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Default bank account Id."
+        },
+        "default_bank_account": {
+          "type": "object",
+          "description": "The default bank account."
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Bank Account Types",
+      "description": ""
+    },
+    {
+      "name": "Bank Entry Types",
+      "description": ""
+    },
+    {
+      "name": "Bank Payment",
+      "description": ""
+    },
+    {
+      "name": "Bank Posted Transactions",
+      "description": ""
+    },
+    {
+      "name": "Bank Receipt",
+      "description": ""
+    },
+    {
+      "name": "Bank Transfer",
+      "description": ""
+    },
+    {
+      "name": "Bank Views",
+      "description": ""
+    },
+    {
+      "name": "Banks",
+      "description": ""
+    },
+    {
+      "name": "Cash Book Settings",
+      "description": ""
+    },
+    {
+      "name": "Electronic Bank Function Types",
+      "description": ""
+    },
+    {
+      "name": "Lookup Banks",
+      "description": ""
+    }
+  ]
+}

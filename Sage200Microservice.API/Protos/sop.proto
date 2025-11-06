@@ -1,0 +1,173 @@
+syntax = "proto3";
+
+package sop;
+
+import "google/api/annotations.proto";
+import "google/api/http.proto";
+
+option csharp_namespace = "Sage200Microservice.API.Protos.Sop";
+
+// =============== Service ===============
+service SopService {
+// GET /api/sop/orders
+rpc ListSopOrders (ListSopOrdersRequest) returns (ListSopOrdersResponse) {
+option (google.api.http) = {
+get: "/grpc/sop/orders"
+};
+}
+
+// GET /api/sop/orders/{id}
+rpc GetSopOrder (GetSopOrderRequest) returns (SopOrder) {
+option (google.api.http) = {
+get: "/grpc/sop/orders/{id}"
+};
+}
+
+// POST /api/sop/orders
+rpc CreateSopOrder (CreateSopOrderRequest) returns (CreateSopOrderResponse) {
+option (google.api.http) = {
+post: "/grpc/sop/orders"
+body: "*"
+};
+}
+
+// GET /api/sop/orders/outstanding
+rpc ListOutstandingSopOrders (OutstandingSopOrdersRequest) returns (ListSopOrdersResponse) {
+option (google.api.http) = {
+get: "/grpc/sop/orders/outstanding"
+};
+}
+
+// POST /api/sop/orders/{id}/status
+rpc UpdateSopOrderStatus (UpdateSopOrderStatusRequest) returns (UpdateSopOrderStatusResponse) {
+option (google.api.http) = {
+post: "/grpc/sop/orders/{id}/status"
+body: "*"
+};
+}
+
+// GET /api/sop/document-status-types
+rpc ListSopDocumentStatusTypes (ListSopDocumentStatusTypesRequest) returns (ListSopDocumentStatusTypesResponse) {
+option (google.api.http) = {
+get: "/grpc/sop/document-status-types"
+};
+}
+}
+
+// =============== Requests/Responses ===============
+message ListSopOrdersRequest {
+string filter = 1; // OData $filter
+string order_by = 2; // OData $orderby
+int32 top = 3; // OData $top
+int32 skip = 4; // OData $skip
+int32 customer_id = 5;
+string order_no = 6;
+string status = 7;
+string from_date = 8; // ISO-8601 date or datetime
+string to_date = 9; // ISO-8601 date or datetime
+}
+
+message OutstandingSopOrdersRequest {
+string filter = 1; // Will be augmented by FriendlyFilters server-side
+string order_by = 2;
+int32 top = 3;
+int32 skip = 4;
+int32 customer_id = 5;
+string order_no = 6;
+string from_date = 7;
+string to_date = 8;
+}
+
+message ListSopOrdersResponse {
+int32 total = 1;
+repeated SopOrder items = 2;
+}
+
+message GetSopOrderRequest {
+int32 id = 1;
+}
+
+message CreateSopOrderRequest {
+SopOrderCreateHeader header = 1;
+repeated SopOrderCreateLine lines = 2;
+string idempotency_key = 3;
+}
+
+message CreateSopOrderResponse {
+bool success = 1;
+string message = 2;
+int32 order_id = 3;
+string order_reference = 4;
+}
+
+message UpdateSopOrderStatusRequest {
+int32 id = 1;
+string status = 2;
+string reason = 3;
+}
+
+message UpdateSopOrderStatusResponse {
+bool success = 1;
+string message = 2;
+int32 order_id = 3;
+string new_status = 4;
+}
+
+message ListSopDocumentStatusTypesRequest {}
+
+message ListSopDocumentStatusTypesResponse {
+repeated SopDocumentStatusType items = 1;
+}
+
+// =============== Entities/DTOs ===============
+message SopOrder {
+int32 id = 1;
+string order_no = 2;
+int32 customer_id = 3;
+string customer_reference = 4;
+string status = 5;
+string order_date = 6; // ISO 8601 "O"
+string promised_date = 7; // ISO 8601 "O"
+string currency_code = 8;
+double net_total = 9;
+double tax_total = 10;
+double gross_total = 11;
+string source_external_id = 12;
+repeated SopOrderLine lines = 13;
+}
+
+message SopOrderLine {
+int32 order_id = 1;
+int32 line_number = 2;
+string product_code = 3;
+string description = 4;
+double quantity = 5;
+double unit_price = 6;
+double net_total = 7;
+double tax_total = 8;
+double gross_total = 9;
+string source_external_line_id = 10;
+}
+
+message SopOrderCreateHeader {
+int32 customer_id = 1;
+string customer_reference = 2;
+string promised_date = 3; // ISO 8601 "O"
+string currency_code = 4;
+string source_external_id = 5;
+}
+
+message SopOrderCreateLine {
+string product_code = 1;
+double quantity = 2;
+double unit_price = 3;
+string description = 4;
+string source_external_line_id = 5;
+}
+
+message SopDocumentStatusType {
+string code = 1;
+string name = 2;
+string description = 3;
+}
+

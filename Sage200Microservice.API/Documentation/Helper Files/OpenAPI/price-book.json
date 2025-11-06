@@ -1,0 +1,1065 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Sage 200 v1 Extra Price Book",
+    "version": "1.0"
+  },
+  "host": "api.columbus.sage.com",
+  "basePath": "/uk/sage200extra/accounts/v1/",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/price_bands": {
+      "x-sage-pathtitle": "Price bands",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "Enhanced endpoint field",
+          "description": "This operation now includes the field 'date_time_created'."
+        },
+        {
+          "date": "26/07/2021",
+          "title": "Enhanced endpoint field",
+          "description": "This operation now includes the field 'price_band_type'."
+        }
+      ],
+      "get": {
+        "summary": "Price Bands",
+        "description": "A price band is simply a price list. They're used to offer different prices to different customers. Product prices are set in the each price band. The price a customer receives for a product depends on the price band their account is linked to.",
+        "operationId": "GetPriceBands",
+        "responses": {
+          "200": {
+            "description": "The details of the price bands have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/price_band"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Price Bands"
+        ]
+      }
+    },
+    "/price_bands/{Id}": {
+      "x-sage-pathtitle": "Price band",
+      "get": {
+        "summary": "Price Band",
+        "description": "A price band is simply a price list. They're used to offer different prices to different customers. Product prices are set in the each price band. The price a customer receives for a product depends on the price band their account is linked to. ",
+        "operationId": "GetPriceBand",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the price band.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the price band have been successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/price_band"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Price Bands"
+        ]
+      }
+    },
+    "/customer_price_bands": {
+      "x-sage-pathtitle": "Customer price bands",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        },
+        {
+          "date": "14/12/2020",
+          "title": "Enhanced endpoint field",
+          "description": "This operation now includes the field 'date_time_created'."
+        }
+      ],
+      "get": {
+        "summary": "Customer Price Bands",
+        "description": "Customer price bands show which customers are linked to which price bands, one customer can have multiple limited price bands, and one price band can be linked to many customers.",
+        "operationId": "GetCustomerPriceBands",
+        "responses": {
+          "200": {
+            "description": "Details of the customer price band have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/customer_price_band"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Customer Price Bands"
+        ]
+      }
+    },
+    "/customer_price_bands/{Id}": {
+      "x-sage-pathtitle": "Customer price band",
+      "get": {
+        "summary": "Customer Price Band",
+        "description": "Customer price bands show which customers are linked to which price bands, one customer can have multiple limited price bands, and one price band can be linked to many customers.",
+        "operationId": "GetCustomerPriceBand",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the customer price band.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the customer price band have been successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/customer_price_band"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Customer Price Bands"
+        ]
+      }
+    },
+    "/price_band_types": {
+      "x-sage-pathtitle": "Price band types",
+      "x-sage-changelog": [
+        {
+          "date": "26/07/2021",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Price Band Types",
+        "description": "Price band types are used to to determine the type of price band within the application. Price bands can be 'Universal' or 'Limited'.<P>The API endpoint returns details of the price band types that can be used.</P>",
+        "operationId": "GetPriceBandTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the price band types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/price_band_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Price Band Types"
+        ]
+      }
+    },
+    "/customer_discount_groups": {
+      "x-sage-pathtitle": "Customer Discount Groups",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Customer Discount Groups",
+        "description": "Customer discount groups allow you to enter a discount for groups of customers rather than individually.",
+        "operationId": "GetCustomerDiscountGroups",
+        "responses": {
+          "200": {
+            "description": "The details of the customer discount groups have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/customer_discount_group"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Customer Discount Groups"
+        ]
+      }
+    },
+    "/customer_discount_groups/{Id}": {
+      "x-sage-pathtitle": "Customer Discount Group",
+      "get": {
+        "summary": "Customer Discount Group",
+        "description": "Customer discount groups allow you to enter a discount for groups of customers rather than individually.",
+        "operationId": "GetCustomerDiscountGroup",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the customer discount group.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the customer discount group have been successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/customer_discount_group"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Customer Discount Groups"
+        ]
+      }
+    },
+    "/order_value_discounts": {
+      "x-sage-pathtitle": "Order Value Discounts",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Order Value Discounts",
+        "description": "Order value discounts are based on the total value of an invoice or sales order.",
+        "operationId": "GetOrderValueDiscounts",
+        "responses": {
+          "200": {
+            "description": "The details of the order value discounts have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/order_value_discount"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Order Value Discounts"
+        ]
+      }
+    },
+    "/order_value_discounts/{Id}": {
+      "x-sage-pathtitle": "Order Value Discount",
+      "get": {
+        "summary": "Order Value Discount",
+        "description": "Order value discounts are based on the total value of an invoice or sales order.",
+        "operationId": "GetOrderValueDiscount",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the order value discount.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the order value discount have been successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/order_value_discount"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Order Value Discounts"
+        ]
+      }
+    },
+    "/discount_or_surcharge_types": {
+      "x-sage-pathtitle": "Discount or surcharge types",
+      "x-sage-changelog": [
+        {
+          "date": "26/07/2021",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Discount Or Surcharge Types",
+        "description": "This specifies whether a percentage is applied as a discount or surcharge.",
+        "operationId": "GetDiscountOrSurchargeTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the discount or surcharge types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/discount_or_surcharge_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Discount Or Surcharge Types"
+        ]
+      }
+    },
+    "/flat_rate_or_quantity_break_types": {
+      "x-sage-pathtitle": "Flat rate or quantity break types",
+      "x-sage-changelog": [
+        {
+          "date": "08/11/2021",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Flat Rate Or Quantity Break Types",
+        "description": "This specifies whether a discount is flat rate or calculated based on a quantity.",
+        "operationId": "GetFlatRateOrQuantityBreakTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the flat rate or quantity break types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/flat_rate_or_quantity_break_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Flat Rate Or Quantity Break Types"
+        ]
+      }
+    },
+    "/source_of_price_types": {
+      "x-sage-pathtitle": "Source of price types",
+      "x-sage-changelog": [
+        {
+          "date": "08/11/2021",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Source Of Price Types",
+        "description": "This specifies whether a discount originates from a Customer, Stock Item or Product Group discount.",
+        "operationId": "GetSourceOfPriceTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the source of price types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/source_of_price_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Source Of Price Types"
+        ]
+      }
+    },
+    "/pricing_types": {
+      "x-sage-pathtitle": "Pricing types",
+      "x-sage-changelog": [
+        {
+          "date": "08/11/2021",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Pricing Types",
+        "description": "This specifies how a price has been calculated. This can be from a Unit Price, Unit Discount Value, Unit Discount Percentage or Special Price.",
+        "operationId": "GetPricingTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the pricing types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/pricing_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Pricing Types"
+        ]
+      }
+    },
+    "/product_price_views": {
+      "x-sage-pathtitle": "Product price views",
+      "x-sage-changelog": [
+        {
+          "date": "16/04/2019",
+          "title": "Extended operation",
+          "description": "The default sort (orderby) field is by 'product_code' ascending."
+        },
+        {
+          "date": "09/05/2019",
+          "title": "Extended operation",
+          "description": "The 'date_time_updated' field has been added to this operation."
+        }
+      ],
+      "get": {
+        "summary": "Product Price Views",
+        "description": "This returns the selling prices of your products. A price is returned for each price band associated with a product.<br /><br />A price band is simply a price list. The price a customer receives for a product depends on the price band their account is linked to. The 'Standard' price band is the default.<br /><br />The prices returned here do not include any customer specific discounts. The default sort (orderby) field is by 'product_code' ascending.",
+        "operationId": "GetProductPriceViews",
+        "responses": {
+          "200": {
+            "description": "The details of the product price view have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/product_price_view"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Product Price Views"
+        ]
+      }
+    },
+    "/price_book_settings": {
+      "x-sage-pathtitle": "Price Book settings",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Price Book Settings",
+        "description": "The Price Book settings are used to configure application behaviour with respect to the Price Book module.<br/><br/>Settings include the pricing discounts.",
+        "operationId": "GetPriceBookSettings",
+        "responses": {
+          "200": {
+            "description": "Price Book settings successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/price_book_settings"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Price Book Settings"
+        ]
+      }
+    },
+    "/price_book_settings/{Id}": {
+      "x-sage-pathtitle": "Price Book setting",
+      "get": {
+        "summary": "Price Book Setting",
+        "description": "The Price Book settings are used to configure application behaviour with respect to the Price Book module.<br/><br/>Settings include the pricing discounts.",
+        "operationId": "GetPriceBookSetting",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the Price Book settings.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Price Book settings successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/price_book_settings"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Price Book Settings"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "price_band": {
+      "type": "object",
+      "description": "A price band is simply a price list. They're used to offer different prices to different customers. Product prices are set in the each price band. The price a customer receives for a product depends on the price band their account is linked to.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Price band record Id.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Price band name."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Price band description."
+        },
+        "is_standard_band": {
+          "type": "boolean",
+          "description": "Is this the Standard price band."
+        },
+        "currency_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency record Id."
+        },
+        "price_band_type_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Price band type record Id; this will be 0 for Universal price bands and 1 for Limited price bands."
+        },
+        "price_band_type": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "The type of price band."
+        },
+        "is_active": {
+          "type": "boolean",
+          "description": "Is this price band active."
+        },
+        "is_time_based": {
+          "type": "boolean",
+          "description": "Is this price band time based."
+        },
+        "active_date_time_from": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this price band is active from."
+        },
+        "active_date_time_to": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this price band is active to."
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "customer_price_band": {
+      "type": "object",
+      "description": "Customer price band show which customers are linked to which price bands, one customer can have multiple limited price bands, and one price band can be linked to many customers.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Customer price band record Id.",
+          "readOnly": true
+        },
+        "customer_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Customer Id.",
+          "readOnly": true
+        },
+        "price_band_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Price band record Id.",
+          "readOnly": true
+        },
+        "is_to_delete": {
+          "type": "boolean",
+          "description": "When updating an existing customer, whether to delete this price band from the collection of customer price bands."
+        },
+        "price_band": {
+          "type": "object",
+          "description": "The price band.",
+          "readOnly": true
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "price_band_type": {
+      "type": "object",
+      "description": "Price band types are used to to determine the type of price band within the application. Price bands can be 'Universal' or 'Limited'.<P>The API endpoint returns details of the price band types that can be used.</P>",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "customer_discount_group": {
+      "type": "object",
+      "description": "Customer discount groups allow you to enter a discount for groups of customers rather than individually.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Customer discount group record Id.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Customer discount group name."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Customer discount group description."
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "order_value_discount": {
+      "type": "object",
+      "description": "Order value discounts are based on the total value of an invoice or sales order.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Order value discount record Id.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Order value discount name."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Order value discount description."
+        },
+        "currency_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency record Id."
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "discount_or_surcharge_type": {
+      "type": "object",
+      "description": "This specifies whether a percentage is applied as a discount or surcharge.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "flat_rate_or_quantity_break_type": {
+      "type": "object",
+      "description": "This specifies whether a discount is flat rate or calculated based on a quantity.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "source_of_price_type": {
+      "type": "object",
+      "description": "This specifies whether a discount originates from a Customer, Stock Item or Product Group discount.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "pricing_type": {
+      "type": "object",
+      "description": "This specifies how a price has been calculated. This can be from a Unit Price, Unit Discount Value, Unit Discount Percentage or Special Price.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "product_price_view": {
+      "type": "object",
+      "description": "This returns the selling prices of your products. A price is returned for each price band associated with a product.<br /><br />A price band is simply a price list. The price a customer receives for a product depends on the price band their account is linked to. The 'Standard' price band is the default.<br /><br />The prices returned here do not include any customer specific discounts. The default sort (orderby) field is by 'product_code' ascending.",
+      "properties": {
+        "product_price_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Product price record Id."
+        },
+        "product_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Product record Id."
+        },
+        "product_code": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Product code."
+        },
+        "product_name": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Product name."
+        },
+        "product_stock_unit_name": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The name of the unit the product is sold in. For example box, crate, bottle. The default unit is each."
+        },
+        "price_band_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Price band record Id."
+        },
+        "price_band_name": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The name of the price band."
+        },
+        "product_price_use_standard": {
+          "type": "boolean",
+          "description": "'True' if uses the price from the standard price band is used otherwise 'False'<br /><br />The price of a product can be linked to the price set in the standard price band. This is used when only some product prices are different to the standard price."
+        },
+        "product_price_price": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The selling price for the shown product and price band."
+        },
+        "currency_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency record Id."
+        },
+        "currency_name": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "The name of the currency used for the price."
+        },
+        "currency_symbol": {
+          "type": "string",
+          "maxLength": 4,
+          "description": "The symbol of the currency used for the price."
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC)."
+        }
+      }
+    },
+    "price_book_settings": {
+      "type": "object",
+      "description": "The Price Book settings are used to configure application behaviour with respect to the Price Book module.<br/><br/>Settings include the pricing discounts.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Price Book Settings record Id.",
+          "readOnly": true
+        },
+        "use_limited_price_bands": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to use limited price bands."
+        },
+        "use_customer_discount_groups": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to use customer discount groups."
+        },
+        "use_stock_item_discounts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to use stock item discounts."
+        },
+        "use_product_group_discounts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to use product group discounts."
+        },
+        "use_quantity_based_discounts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to use quantity based discounts."
+        },
+        "use_order_value_discounts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to use order value discounts."
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Customer Discount Groups",
+      "description": ""
+    },
+    {
+      "name": "Customer Price Bands",
+      "description": ""
+    },
+    {
+      "name": "Discount Or Surcharge Types",
+      "description": ""
+    },
+    {
+      "name": "Flat Rate Or Quantity Break Types",
+      "description": ""
+    },
+    {
+      "name": "Order Value Discounts",
+      "description": ""
+    },
+    {
+      "name": "Price Band Types",
+      "description": ""
+    },
+    {
+      "name": "Price Bands",
+      "description": ""
+    },
+    {
+      "name": "Price Book Settings",
+      "description": ""
+    },
+    {
+      "name": "Pricing Types",
+      "description": ""
+    },
+    {
+      "name": "Product Price Views",
+      "description": ""
+    },
+    {
+      "name": "Source Of Price Types",
+      "description": ""
+    }
+  ]
+}

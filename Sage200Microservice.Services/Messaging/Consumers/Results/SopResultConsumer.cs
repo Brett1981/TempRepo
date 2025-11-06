@@ -1,0 +1,425 @@
+﻿// Purpose:
+//   Consume MDM_SOP_RESULTS, deserialize the ResultMessageEnvelope, update TransactionAttempt,
+//   upsert ExternalIdLink (when externalRef present), write one AuditLog entry, and on permanent
+//   failure publish to MDM_SOP_RESULTS_DLQ then commit.
+//
+// Notes:
+//   • No DI/Program changes here (feature gating will be added later per sequence).
+//   • Mirrors InvoiceResultConsumer and CustomerResultConsumer, but with resource/entity "SopOrder".
+//   • Uses KafkaOptions.ConsumerGroupId, AutoOffsetReset, EnableAutoCommit.
+// =====================================================================================================
+namespace Sage200Microservice.Services.Messaging.Consumers.Results
+{
+    using Confluent.Kafka;
+    using Microsoft.EntityFrameworkCore;
+    using Microsoft.Extensions.DependencyInjection;
+    using Microsoft.Extensions.Hosting;
+    using Microsoft.Extensions.Logging;
+    using Microsoft.Extensions.Options;
+    using Sage200Microservice.Data;
+    using Sage200Microservice.Data.Models;
+    using Sage200Microservice.Services.Infrastructure;
+    using Sage200Microservice.Services.Messaging;
+    using Sage200Microservice.Services.Messaging.Consumers.Common;
+    using Sage200Microservice.Services.Models;
+    using System;
+    using System.Linq;
+    using System.Security.Cryptography;
+    using System.Text;
+    using System.Text.Json;
+    using System.Text.Json.Serialization;
+    using System.Threading;
+    using System.Threading.Tasks;
+
+    /// <summary>
+    /// Hosted Kafka consumer for SOP result events (MDM_SOP_RESULTS).
+    /// </summary>
+    public sealed class SopResultConsumer : BackgroundService
+    {
+        private const string TopicName = "MDM_SOP_RESULTS";
+        private const string DlqTopicName = "MDM_SOP_RESULTS_DLQ";
+
+        private readonly IServiceProvider _services;
+        private readonly ILogger<SopResultConsumer> _logger;
+        private readonly IEventPublisher _eventPublisher;
+        private readonly KafkaOptions _kafka;
+        private readonly SageApiSettings _sage;
+        private readonly IHostEnvironment _env;
+
+        private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            WriteIndented = false
+        };
+
+        /// <summary>
+        /// DI constructor.
+        /// </summary>
+        public SopResultConsumer(
+            IServiceProvider services,
+            ILogger<SopResultConsumer> logger,
+            IEventPublisher eventPublisher,
+            IOptions<KafkaOptions> kafkaOptions,
+            IOptions<SageApiSettings> sageOptions,
+            IHostEnvironment env)
+        {
+            _services = services;
+            _logger = logger;
+            _eventPublisher = eventPublisher;
+            _kafka = kafkaOptions.Value;
+            _sage = sageOptions.Value;
+            _env = env;
+        }
+
+        /// <inheritdoc />
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
+            var groupId = string.IsNullOrWhiteSpace(_kafka.ConsumerGroupId)
+                ? "sage200microservice_results"
+                : _kafka.ConsumerGroupId!;
+
+            var config = new ConsumerConfig
+            {
+                BootstrapServers = _kafka.BootstrapServers,
+                GroupId = groupId,
+                EnableAutoCommit = _kafka.EnableAutoCommit,
+                AutoOffsetReset = ParseOffsetReset(_kafka.AutoOffsetReset),
+                // Optional SASL/SSL can be applied from KafkaOptions if configured
+            };
+
+            using var consumer = new ConsumerBuilder<string, string>(config)
+                .SetErrorHandler((_, e) => _logger.LogError("Kafka error: {Reason}", e.Reason))
+                .SetStatisticsHandler((_, s) => _logger.LogDebug("Kafka stats: {Stats}", s))
+                .Build();
+
+            consumer.Subscribe(TopicName);
+            _logger.LogInformation("SopResultConsumer subscribed to {Topic} (group {Group})", TopicName, groupId);
+
+            try
+            {
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    ConsumeResult<string, string>? result = null;
+
+                    try
+                    {
+                        result = consumer.Consume(stoppingToken);
+                        if (result is null) continue;
+
+                        await ProcessMessageAsync(result, stoppingToken).ConfigureAwait(false);
+
+                        if (!_kafka.EnableAutoCommit)
+                            consumer.Commit(result);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    catch (PermanentMessageException pmx)
+                    {
+                        _logger.LogWarning(pmx, "Permanent failure; sending to DLQ and committing.");
+
+                        try
+                        {
+                            await PublishDlqAsync(result, pmx.Reason, stoppingToken).ConfigureAwait(false);
+                        }
+                        catch (Exception dlqEx)
+                        {
+                            _logger.LogError(dlqEx, "DLQ publish failed for topic {Topic}", TopicName);
+                        }
+
+                        if (result is not null && !_kafka.EnableAutoCommit)
+                            consumer.Commit(result);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Transient processing error; will retry.");
+                        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken).ConfigureAwait(false);
+                    }
+                }
+            }
+            finally
+            {
+                consumer.Close();
+            }
+        }
+
+        /// <summary>
+        /// Processes a single Kafka message for SOP results.
+        /// </summary>
+        private async Task ProcessMessageAsync(ConsumeResult<string, string> record, CancellationToken ct)
+        {
+            // -------- Ambient Sage context (headers → ambient → defaults) --------
+            var msgHeaders = record.Message.Headers;
+            var site = msgHeaders.TryGetLastValue(_sage.SiteHeaderName) ?? _sage.SiteId;
+            var company = msgHeaders.TryGetLastValue(_sage.CompanyHeaderName) ?? _sage.CompanyId;
+
+            // API key: prefer header; in Development we allow fallback to configured dev key
+            var apiKey = msgHeaders.TryGetLastValue(_sage.ApiKeyHeaderName);
+            if (string.IsNullOrWhiteSpace(apiKey) && _env.IsDevelopment() && _sage.AllowDevelopmentFallbackApiKey)
+            {
+                apiKey = _sage.DevelopmentDefaultApiKey;
+            }
+
+            // Push ambient context so the SageRoutingHeaderHandler can inject headers on any downstream Sage calls
+            using var __ambient = SageCallContext.Push(site, company, apiKey);
+            // --------------------------------------------------------------------
+            var payload = record.Message?.Value;
+            if (string.IsNullOrWhiteSpace(payload))
+                throw Permanent("Empty payload.");
+
+            ResultMessageEnvelope? envelope;
+            try
+            {
+                envelope = JsonSerializer.Deserialize<ResultMessageEnvelope>(payload, _jsonOptions);
+            }
+            catch (Exception jex)
+            {
+                throw Permanent($"Deserialization error: {jex.Message}");
+            }
+            if (envelope is null)
+                throw Permanent("Envelope deserialized to null.");
+
+            using var scope = _services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+
+            // Lookup TransactionAttempt: correlationId first, then IdempotencyKey hash (SHA-512 Base64, 88 chars)
+            var attempt = await FindAttemptAsync(db, envelope, ct).ConfigureAwait(false);
+            if (attempt is null)
+                throw Permanent("No matching TransactionAttempt (correlationId/idempotencyKey).");
+
+            var now = DateTime.UtcNow;
+            var completedUtc = envelope.ReceivedAtUtc?.UtcDateTime ?? now;
+
+            // Update attempt
+            attempt.ProcessingStatus = NormalizeStatus(envelope.Status);
+            attempt.SageUrn = envelope.SageUrn ?? attempt.SageUrn;
+            attempt.SageId = envelope.SageId.HasValue ? (long?)envelope.SageId.Value : attempt.SageId;
+            attempt.ProcessingCompletedUtc = completedUtc;
+            attempt.DurationMs = NormalizeDuration(envelope.DurationMs, attempt.ProcessingStartedUtc, completedUtc);
+            attempt.ResultMessage = envelope.ToConciseResultMessage(TopicName);
+
+            // Upsert ExternalIdLink if externalRef present (AppId from envelope.apiKeyId fallback to attempt.ApiKeyId)
+            if (!string.IsNullOrWhiteSpace(envelope.ExternalRef))
+            {
+                var appId = envelope.ApiKeyId ?? attempt.ApiKeyId ?? 0;
+                if (appId > 0)
+                {
+                    await UpsertExternalIdLinkAsync(
+                        db,
+                        appId,
+                        envelope.ExternalRef!,
+                        envelope.EntityType.ToString(),
+                        attempt.SageUrn,
+                        attempt.SageId,
+                        now,
+                        ct).ConfigureAwait(false);
+                }
+            }
+
+            // Write AuditLog
+            db.AuditLogs.Add(new AuditLog
+            {
+                Timestamp = now,
+                EventType = AuditEventType.DataModification,
+                Category = AuditEventCategory.Business,
+                Severity = MapSeverity(envelope.Status),
+                Status = MapAuditStatus(envelope.Status),
+                Resource = "SopOrder",
+                Action = "ResultReceived",
+                Description = attempt.ResultMessage ?? $"Result {envelope.Status} from {TopicName}",
+                CorrelationId = attempt.CorrelationId,
+
+                // Optional/non-essential fields:
+                IpAddress = string.Empty,
+                ClientId = attempt.ApiKeyId?.ToString(),
+                UserId = null,
+                Details = string.Empty,
+                HttpMethod = string.Empty,
+                UrlPath = string.Empty,
+                UserAgent = string.Empty,
+                ReferenceId = null,
+                ReferenceName = null,
+                PreviousState = null,
+                NewState = null,
+                DurationMs = attempt.DurationMs,
+                RetentionDays = 0,
+                ExpiresAt = null
+            });
+
+            await db.SaveChangesAsync(ct).ConfigureAwait(false);
+
+            _logger.LogInformation("SOP result processed. Correlation={CorrelationId}, Status={Status}, URN={Urn}",
+                attempt.CorrelationId, envelope.Status, attempt.SageUrn);
+        }
+
+        // ------------------------------ Helpers ------------------------------
+
+        private static async Task<TransactionAttempt?> FindAttemptAsync(ApplicationContext db, ResultMessageEnvelope env, CancellationToken ct)
+        {
+            if (!string.IsNullOrWhiteSpace(env.CorrelationId))
+            {
+                var byCorr = await db.Set<TransactionAttempt>()
+                    .FirstOrDefaultAsync(a => a.CorrelationId == env.CorrelationId, ct)
+                    .ConfigureAwait(false);
+                if (byCorr is not null) return byCorr;
+            }
+
+            if (!string.IsNullOrWhiteSpace(env.IdempotencyKey))
+            {
+                var keyHash = ComputeSha512Base64(env.IdempotencyKey!);
+                var byKey = await db.Set<TransactionAttempt>()
+                    .FirstOrDefaultAsync(a => a.IdempotencyKeyHash == keyHash, ct)
+                    .ConfigureAwait(false);
+                if (byKey is not null) return byKey;
+            }
+
+            return null;
+        }
+
+        private static string NormalizeStatus(string? status)
+            => string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase) ? "SageSuccess" : "SageFailure";
+
+        private static int? NormalizeDuration(long? reportedMs, DateTime? startedUtc, DateTime completedUtc)
+        {
+            if (reportedMs.HasValue)
+            {
+                return reportedMs.Value > int.MaxValue ? int.MaxValue : (int)reportedMs.Value;
+            }
+
+            if (startedUtc.HasValue)
+            {
+                var ms = (completedUtc - startedUtc.Value).TotalMilliseconds;
+                if (ms < 0) ms = 0;
+                return ms > int.MaxValue ? int.MaxValue : (int)ms;
+            }
+
+            return null;
+        }
+
+        private static AuditEventSeverity MapSeverity(string? status)
+        {
+            if (string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)) return AuditEventSeverity.Info;
+            if (string.Equals(status, "Failure", StringComparison.OrdinalIgnoreCase)) return AuditEventSeverity.Error;
+            return AuditEventSeverity.Warning;
+        }
+
+        private static AuditEventStatus MapAuditStatus(string? status)
+        {
+            if (string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)) return AuditEventStatus.Success;
+            if (string.Equals(status, "Failure", StringComparison.OrdinalIgnoreCase)) return AuditEventStatus.Failure;
+            return AuditEventStatus.InProgress;
+        }
+
+        private static async Task UpsertExternalIdLinkAsync(
+            ApplicationContext db,
+            int appId,
+            string externalRef,
+            string? entityTypeText,
+            string? sageUrn,
+            long? sageId,
+            DateTime nowUtc,
+            CancellationToken ct)
+        {
+            var entityType = TryParseEntityType(entityTypeText, preferredText: "SopOrder");
+
+            var existing = await db.ExternalIdLinks
+                .FirstOrDefaultAsync(x => x.AppId == appId && x.EntityType == entityType && x.ExternalRef == externalRef, ct)
+                .ConfigureAwait(false);
+
+            if (existing is null)
+            {
+                db.ExternalIdLinks.Add(new ExternalIdLink
+                {
+                    AppId = appId,
+                    EntityType = entityType,
+                    ExternalRef = externalRef,
+                    SageUrn = sageUrn,
+                    SageId = sageId,
+                    CreatedUtc = nowUtc
+                });
+            }
+            else
+            {
+                existing.SageUrn = sageUrn ?? existing.SageUrn;
+                existing.SageId = sageId ?? existing.SageId;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to parse the inbound entityType text to ExternalEntityType. If parsing fails, prefer "SopOrder"
+        /// when available; else fall back to the enum's default (first value).
+        /// </summary>
+        private static ExternalEntityType TryParseEntityType(string? text, string preferredText)
+        {
+            if (!string.IsNullOrWhiteSpace(text) &&
+                Enum.TryParse<ExternalEntityType>(text, ignoreCase: true, out var parsedFromPayload))
+            {
+                return parsedFromPayload;
+            }
+
+            if (Enum.TryParse<ExternalEntityType>(preferredText, ignoreCase: true, out var preferred))
+            {
+                return preferred;
+            }
+
+            var values = (ExternalEntityType[])Enum.GetValues(typeof(ExternalEntityType));
+            return values.Length > 0 ? values[0] : default;
+        }
+
+        private static AutoOffsetReset ParseOffsetReset(string? setting)
+            => string.Equals(setting, nameof(AutoOffsetReset.Latest), StringComparison.OrdinalIgnoreCase)
+                ? AutoOffsetReset.Latest
+                : AutoOffsetReset.Earliest;
+
+        private static string ComputeSha512Base64(string input)
+        {
+            using var sha = SHA512.Create();
+            var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(input));
+            return Convert.ToBase64String(hash); // 88 chars
+        }
+
+        private static PermanentMessageException Permanent(string reason) => new(reason);
+
+        // ------------------------------ DLQ ------------------------------
+
+        private async Task PublishDlqAsync(ConsumeResult<string, string>? record, string reason, CancellationToken ct)
+        {
+            var headers = record?.Message?.Headers != null
+                ? record.Message.Headers.ToDictionary(h => h.Key, h => Encoding.UTF8.GetString(h.GetValueBytes()))
+                : new Dictionary<string, string>();
+            var key = record?.Message?.Key;
+
+            var dlq = new
+            {
+                correlationId = key,
+                reason,
+                originalPayload = record?.Message?.Value ?? string.Empty,
+                headers,
+                occurredUtc = DateTime.UtcNow
+            };
+
+            var json = JsonSerializer.Serialize(dlq, _jsonOptions);
+            await _eventPublisher.PublishAsync(DlqTopicName, json, ct).ConfigureAwait(false);
+        }
+
+        // ------------------------ Permanent Error ------------------------
+
+        private sealed class PermanentMessageException : Exception
+        {
+            public string? Reason { get; }
+            public PermanentMessageException(string reason) : base(reason) => Reason = reason;
+
+            public PermanentMessageException() : base()
+            {
+                Reason = null;
+            }
+
+            public PermanentMessageException(string? message, Exception? innerException) : base(message, innerException)
+            {
+                Reason = message;
+            }
+        }
+    }
+}

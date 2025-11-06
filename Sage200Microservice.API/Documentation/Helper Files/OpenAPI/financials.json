@@ -1,0 +1,2947 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Sage 200 v1 Extra Financials",
+    "version": "1.0"
+  },
+  "host": "api.columbus.sage.com",
+  "basePath": "/uk/sage200extra/accounts/v1/",
+  "schemes": [
+    "https"
+  ],
+  "paths": {
+    "/currencies": {
+      "x-sage-pathtitle": "Currencies Collection",
+      "x-sage-changelog": [
+        {
+          "date": "05/02/2016",
+          "title": "Extended operation",
+          "description": "This operation now includes the fields 'is_base_currency' and 'is_euro_currency', which indicate whether or not a currency is the base currency or Euro currency respectively."
+        },
+        {
+          "date": "16/09/2020",
+          "title": "Enhanced endpoint fields",
+          "description": "This operation now includes the fields 'use_for_new_accounts', 'exchange_rate_type', 'exchange_rate_amendability_type' and 'date_time_created'."
+        }
+      ],
+      "get": {
+        "summary": "Currencies Collection",
+        "description": "Sage 200 works in multiple currencies and each company can configure up to 99 currencies to use. All currencies can be configured to use a single exchange rate, a period exchange rates or, both. One currency must be configured as the base currency and this cannot be changed once transactions have been entered.<P>If a currency is configured as amendable, the exchange rate can be modified when entering transactions.</P>",
+        "operationId": "GetCurrencies",
+        "responses": {
+          "200": {
+            "description": "The list of currencies has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/currency"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Currencies"
+        ]
+      }
+    },
+    "/currencies/{Id}": {
+      "x-sage-pathtitle": "Single Currency Resource",
+      "get": {
+        "summary": "Single Currency Resource",
+        "description": "Sage 200 works in multiple currencies and each company can configure up to 99 currencies to use. All currencies can be configured to use a single exchange rate, a period exchange rates or, both. One currency must be configured as the base currency and this cannot be changed once transactions have been entered.<P>If a currency is configured as amendable, the exchange rate can be modified when entering transactions.</P>",
+        "operationId": "GetCurrency",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the currency.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of currency successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/currency"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Currencies"
+        ]
+      }
+    },
+    "/exchange_rate_types": {
+      "x-sage-pathtitle": "Exchange Rate Types",
+      "get": {
+        "summary": "Exchange Rate Types",
+        "description": "Exchange rates may change on a daily basis so, a company will configure exchange rates according to their best method for updating. Exchange rates can be configured as 'Single' or 'Period', according to the company preference.<P>The API endpoint returns details of the exchange rate types that can be used.</P>",
+        "operationId": "GetExchangeRateTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the exchange rate types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/exchange_rate_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Exchange Rate Types"
+        ]
+      }
+    },
+    "/exchange_rate_amendability_types": {
+      "x-sage-pathtitle": "Exchange rate amendability types",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Exchange Rate Amendability Types",
+        "description": "Exchange rate amendability types are used to allow control when and where a currency can be changed within the application. Currencies can be configured as 'Not Amendable', 'Amendable - Cash Postings Only', 'Amendable - All' or 'Fixed to Euro'.<P>The API endpoint returns details of the exchange rate amendability types that can be used.</P>",
+        "operationId": "GetExchangeRateAmendabilityTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the exchange rate amendability types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/exchange_rate_amendability_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Exchange Rate Amendability Types"
+        ]
+      }
+    },
+    "/currency_exchange_rates": {
+      "x-sage-pathtitle": "Currency exchange rates",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        },
+        {
+          "date": "26/07/2021",
+          "title": "Enhanced endpoint field",
+          "description": "This operation now includes the field 'currency_transaction_type'."
+        }
+      ],
+      "post": {
+        "summary": "Currency Exchange Rates",
+        "description": "Returns the currency exchange rates that have been specified within the application.",
+        "operationId": "PostCurrencyExchangeRates",
+        "consumes": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "CurrencyExchangeRatesRequest",
+            "in": "body",
+            "description": "The request for currency exchange rates.",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/currency_exchange_rate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The currency exchange rate was successfully returned. Response body will include the currency exchange rate details.",
+            "schema": {
+              "$ref": "#/definitions/currency_exchange_rate"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Currency Exchange Rates"
+        ]
+      }
+    },
+    "/currency_transaction_types": {
+      "x-sage-pathtitle": "Currency Transaction Types",
+      "x-sage-changelog": [
+        {
+          "date": "26/07/2021",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Currency Transaction Types",
+        "description": "Currency transaction types are used to determine processing to acquire the exchange rate. Currency transaction type can be 'CurrencyTransactionCash' or 'CurrencyTransactionNonCash'.<P>The API endpoint returns details of the currency transaction types that can be used.</P>",
+        "operationId": "GetCurrencyTransactionTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the currency transaction types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/currency_transaction_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Currency Transaction Types"
+        ]
+      }
+    },
+    "/account_status_types": {
+      "x-sage-pathtitle": "Account Status Types",
+      "get": {
+        "summary": "Account Status Types",
+        "description": "The account status is used to determine whether a customer, supplier, nominal or bank account is hidden or shown (Sage 200 Standard and versions of Professional released after July 2017). Account status can be configured as 'Active' or 'Hidden'.<P>The API endpoint returns details of the account status types that can be used.</P>",
+        "operationId": "GetAccountStatusTypes",
+        "responses": {
+          "200": {
+            "description": "The list of account status types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/account_status_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Account Status Types"
+        ]
+      }
+    },
+    "/allocation_status_types": {
+      "x-sage-pathtitle": "Allocation Status Types",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Allocation Status Types",
+        "description": "The allocation status is used to determine whether a transaction is allocated in full, in part, or not at all.",
+        "operationId": "GetAllocationStatusTypes",
+        "responses": {
+          "200": {
+            "description": "The list of allocation status types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/allocation_status_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Allocation Status Types"
+        ]
+      }
+    },
+    "/trader_account_types": {
+      "x-sage-pathtitle": "Trader Account Types",
+      "get": {
+        "summary": "Trader Account Types",
+        "description": "The trader account type is used to decide how transactions are stored on individual accounts.",
+        "operationId": "GetTraderAccountTypes",
+        "responses": {
+          "200": {
+            "description": "The list of account status types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/trader_account_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Trader Account Types"
+        ]
+      }
+    },
+    "/communication_types": {
+      "x-sage-pathtitle": "Communication Types",
+      "x-sage-changelog": [
+        {
+          "date": "02/06/2025",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Communication Types",
+        "description": "The communication type is used to indicate the method of communication.",
+        "operationId": "GetCommunicationTypes",
+        "responses": {
+          "200": {
+            "description": "The list of communication types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/communication_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Communication Types"
+        ]
+      }
+    },
+    "/communication_contact_types": {
+      "x-sage-pathtitle": "Communication Contact Types",
+      "x-sage-changelog": [
+        {
+          "date": "02/06/2025",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Communication Contact Types",
+        "description": "The communication contact type indicates the contact type based on the method of communication.",
+        "operationId": "GetCommunicationContactTypes",
+        "responses": {
+          "200": {
+            "description": "The list of communication contact types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/communication_contact_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Communication Contact Types"
+        ]
+      }
+    },
+    "/communication_style_types": {
+      "x-sage-pathtitle": "Communication Style Types",
+      "x-sage-changelog": [
+        {
+          "date": "02/06/2025",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Communication Style Types",
+        "description": "The communication style type indicates the style of email, letter or fax communication.",
+        "operationId": "GetCommunicationStyleTypes",
+        "responses": {
+          "200": {
+            "description": "The list of communication style types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/communication_style_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Communication Style Types"
+        ]
+      }
+    },
+    "/communication_location_types": {
+      "x-sage-pathtitle": "Communication Location Types",
+      "x-sage-changelog": [
+        {
+          "date": "02/06/2025",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Communication Location Types",
+        "description": "The communication location type indicates the location of a meeting communication.",
+        "operationId": "GetCommunicationLocationTypes",
+        "responses": {
+          "200": {
+            "description": "The list of communication location types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/communication_location_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Communication Location Types"
+        ]
+      }
+    },
+    "/communication_outcome_types": {
+      "x-sage-pathtitle": "Communication Outcome Types",
+      "x-sage-changelog": [
+        {
+          "date": "02/06/2025",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Communication Outcome Types",
+        "description": "The communication outcome type indicates the result of a communication.",
+        "operationId": "GetCommunicationOutcomeTypes",
+        "responses": {
+          "200": {
+            "description": "The list of communication outcome types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/communication_outcome_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Communication Outcome Types"
+        ]
+      }
+    },
+    "/document_types": {
+      "x-sage-pathtitle": "Document types",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Document Types",
+        "description": "These are the type of document used within the application. Document types can be 'Sales Order', 'Sales Invoice', 'Purchase Order', 'Purchase Invoice', 'Customer Statement', 'Sales Credit Notes', 'Customer Debtors Letters', 'Sales Despatch Notes', 'Sales Quotations', 'Purchase Credit Notes', 'Purchase Remittance', 'Purchase Return', 'Sales Proforma', 'Draft Bill', 'Billing Invoice', 'Billing Credit Note', or 'Sales Order Acknowledgement'.",
+        "operationId": "GetDocumentTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the document types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/document_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Document Types"
+        ]
+      }
+    },
+    "/document_types/{Id}": {
+      "x-sage-pathtitle": "Document types",
+      "get": {
+        "summary": "Document Types",
+        "description": "These are the type of document used within the application. Document types can be 'Sales Order', 'Sales Invoice', 'Purchase Order', 'Purchase Invoice', 'Customer Statement', 'Sales Credit Notes', 'Customer Debtors Letters', 'Sales Despatch Notes', 'Sales Quotations', 'Purchase CreditNotes', 'Purchase Remittance', 'Purchase Return', 'Sales Proforma', 'Draft Bill', 'Billing Invoice', 'Billing Credit Note', or 'Sales Order Acknowledgement'.",
+        "operationId": "GetDocumentType",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the document type.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The details of the document type has been successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/document_type"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Document Types"
+        ]
+      }
+    },
+    "/document_layouts": {
+      "x-sage-pathtitle": "Document layouts",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Document Layouts",
+        "description": "Document layout are the layouts that are available within the application, which are associated with the document types.",
+        "operationId": "GetDocumentLayouts",
+        "responses": {
+          "200": {
+            "description": "Details of the document layout have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/document_layout"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Document Layouts"
+        ]
+      }
+    },
+    "/document_layouts/{Id}": {
+      "x-sage-pathtitle": "Document layout",
+      "get": {
+        "summary": "Document Layout",
+        "description": "Document layout are the layouts that are available within the application, which are associated with the document types.",
+        "operationId": "GetDocumentLayout",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the document layout.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the document layout have been successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/document_layout"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Document Layouts"
+        ]
+      }
+    },
+    "/country_codes": {
+      "x-sage-pathtitle": "Country codes",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "Enhanced endpoint fields",
+          "description": "This operation now includes the fields 'tax_mask' and 'date_time_created'."
+        }
+      ],
+      "get": {
+        "summary": "Country Codes",
+        "description": "All countries each have a specific code to identify accounts that belong to that country.",
+        "operationId": "GetCountryCodes",
+        "responses": {
+          "200": {
+            "description": "The list of country codes has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/country_code"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Country Codes"
+        ]
+      }
+    },
+    "/country_codes/{Id}": {
+      "x-sage-pathtitle": "Country code",
+      "get": {
+        "summary": "Country Code",
+        "description": "All countries each have a specific code to identify accounts that belong to that country.",
+        "operationId": "GetCountryCode",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the country code.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of country code successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/country_code"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Country Codes"
+        ]
+      }
+    },
+    "/tax_codes": {
+      "x-sage-pathtitle": "Tax codes",
+      "x-sage-changelog": [
+        {
+          "date": "21/08/2019",
+          "title": "Extended operation",
+          "description": "Tax Codes have been extended to include the name and description of the terms."
+        },
+        {
+          "date": "16/09/2020",
+          "title": "Extended operation",
+          "description": "This endpoint was enhanced with a GET by Id operation."
+        },
+        {
+          "date": "16/09/2020",
+          "title": "Enhanced endpoint fields",
+          "description": "This operation now includes the fields 'is_notional_acquisition_tax' and 'date_time_created'."
+        }
+      ],
+      "get": {
+        "summary": "Tax Codes",
+        "description": "Tax codes are normally used for UK business VAT Rates. They are accessed by Sage 200 modules in order to; <ul><li>Analyse the rates to Nominal Ledger accounts.</li><li>Analyse the rates to the VAT Return.</li><li>Read percentages for calculations in transactions.</li></ul>The API endpoint returns details of the tax codes that can be used.",
+        "operationId": "GetTaxCodes",
+        "responses": {
+          "200": {
+            "description": "The list of tax codes has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/tax_code"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Tax Codes"
+        ]
+      }
+    },
+    "/tax_codes/{Id}": {
+      "x-sage-pathtitle": "Tax code",
+      "get": {
+        "summary": "Tax Code",
+        "description": "Tax codes are normally used for UK business VAT Rates. They are accessed by Sage 200 modules in order to; <ul><li>Analyse the rates to Nominal Ledger accounts.</li><li>Analyse the rates to the VAT Return.</li><li>Read percentages for calculations in transactions.</li></ul>The API endpoint returns details of the tax codes that can be used.",
+        "operationId": "GetTaxCode",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the tax code.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The details of the tax code has been successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/tax_code"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Tax Codes"
+        ]
+      }
+    },
+    "/currency_iso_codes": {
+      "x-sage-pathtitle": "Currency ISO codes",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "Enhanced endpoint field",
+          "description": "This operation now includes the field 'date_time_created'."
+        }
+      ],
+      "get": {
+        "summary": "Currency ISO Codes",
+        "description": "All currencies have a designated ISO (International Standards Organisation) code that uniquely identifies that currency.",
+        "operationId": "GetCurrencyISOCodes",
+        "responses": {
+          "200": {
+            "description": "The list of currency ISO codes has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/currency_iso_code"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Currency Iso Codes"
+        ]
+      }
+    },
+    "/currency_iso_codes/{Id}": {
+      "x-sage-pathtitle": "Currency ISO code",
+      "get": {
+        "summary": "Currency ISO Code",
+        "description": "All currencies have a designated ISO (International Standards Organisation) code that uniquely identifies that currency.",
+        "operationId": "GetCurrencyISOCode",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the currency ISO code.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of currency ISO code successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/currency_iso_code"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Currency Iso Codes"
+        ]
+      }
+    },
+    "/contact_number_types": {
+      "x-sage-pathtitle": "Contact number types",
+      "get": {
+        "summary": "Contact Number Types",
+        "description": "For every customer and supplier, users can store multiple contacts. Each contact can be associated with multiple telephone numbers, mobile numbers, fax numbers, etc. When reading/writing these values, the contact number type is specified.<br /><br />Use this API endpoint to return the definition of a particular contact number type.",
+        "operationId": "GetContactNumberTypes",
+        "responses": {
+          "200": {
+            "description": "The list of contact number types has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/contact_number_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Contact Number Types"
+        ]
+      }
+    },
+    "/financial_year_period_views": {
+      "x-sage-pathtitle": "Financial year period views",
+      "x-sage-changelog": [
+        {
+          "date": "16/04/2019",
+          "title": "Extended operation",
+          "description": "The default sort (orderby) field are by 'financial_year_start_date' and 'period_number' ascending."
+        }
+      ],
+      "get": {
+        "summary": "Financial Year Period Views",
+        "description": "This resource returns the details of all accounting periods for all financial years held for the company. A company always has five future financial years and can have unlimited previous years, depending on how long the company has been operating. The default sort (orderby) field are by 'financial_year_start_date' and 'period_number' ascending.",
+        "operationId": "GetFinancialYearPeriodViews",
+        "responses": {
+          "200": {
+            "description": "The details of the accounting periods have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/financial_year_period_view"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Financial Year Period Views"
+        ]
+      }
+    },
+    "/tax_account_entry_types": {
+      "x-sage-pathtitle": "Tax account entry location types",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Tax Account Entry Location Types",
+        "description": "This list of available types is predefined by the system.</P><P>The API endpoint returns details of tax account entry types that can be used.",
+        "operationId": "GetTaxAccountEntryLocationTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the tax account entry types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/tax_account_entry_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Tax Account Entry Types"
+        ]
+      }
+    },
+    "/trading_revaluation_allocation_entry_types": {
+      "x-sage-pathtitle": "Tax account entry location types",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Tax Account Entry Location Types",
+        "description": "This list of available types is predefined by the system.</P><P>The API endpoint returns details of trading revaluation allocation entry types that can be used.",
+        "operationId": "GetTradingRevaluationAllocationEntryTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the trading revaluation allocation entry types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/trading_revaluation_allocation_entry_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Trading Revaluation Allocation Entry Types"
+        ]
+      }
+    },
+    "/financial_report_row_line_types": {
+      "x-sage-pathtitle": "Financial report row line types",
+      "get": {
+        "summary": "Financial Report Row Line Types",
+        "description": "Financial statement layouts are designed to provide a clear representation of your accounts. Each row in a financial layout has an associated 'type'. This list of available types is predefined by the system.</P><P>The API endpoint returns details of financial report row line types that can be used.",
+        "operationId": "GetFinancialReportRowLineTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the financial report row line types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/financial_report_row_line_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Financial Report Row Line Types"
+        ]
+      }
+    },
+    "/financial_report_row_layout_position_types": {
+      "x-sage-pathtitle": "Financial report row layout position types",
+      "get": {
+        "summary": "Financial Report Row Layout Position Types",
+        "description": "Financial statement layouts are designed to provide a clear representation of your accounts. Each row in a financial layout has an associated layout position 'type'. This list of available types is predefined by the system.</P><P>The API endpoint returns details of financial report row layout position types that can be used.",
+        "operationId": "GetFinancialReportRowLayoutPositionTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the financial report row layout position types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/financial_report_row_layout_position_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Financial Report Row Layout Position Types"
+        ]
+      }
+    },
+    "/financial_report_row_layout_debit_or_credit_types": {
+      "x-sage-pathtitle": "Financial report row layout debit or credit types",
+      "get": {
+        "summary": "Financial Report Row Layout Debit Or Credit Types",
+        "description": "Financial statement layouts are designed to provide a clear representation of your accounts. Each row in a financial layout can have an associated debit or credit 'type'. This list of available types is predefined by the system.</P><P>The API endpoint returns details of financial report row layout debit or credit types that can be used.",
+        "operationId": "GetFinancialReportRowLayoutDebitOrCreditTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the financial report row layout debit or credit types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/financial_report_row_layout_debit_or_credit_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Financial Report Row Layout Debit Or Credit Types"
+        ]
+      }
+    },
+    "/financial_report_layout_types": {
+      "x-sage-pathtitle": "Financial report layout types",
+      "get": {
+        "summary": "Financial Report Layout Types",
+        "description": "This list of available types is predefined by the system.</P><P>The API endpoint returns details of financial report layout types that can be used.",
+        "operationId": "GetFinancialReportLayoutTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the financial report layout types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/financial_report_layout_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Financial Report Layout Types"
+        ]
+      }
+    },
+    "/financial_report_layout_views": {
+      "x-sage-pathtitle": "Financial report layout views",
+      "get": {
+        "summary": "Financial Report Layout Views",
+        "description": "Financial statement layouts are designed to provide a clear representation of your accounts. This resource returns the details of all financial report layouts. The default sort (orderby) field are by 'financial_report_layout_id' and 'financial_report_row_report_row' ascending.",
+        "operationId": "GetFinancialReportLayoutViews",
+        "responses": {
+          "200": {
+            "description": "The details of the report layouts have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/financial_report_layout_view"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Financial Report Layout Views"
+        ]
+      }
+    },
+    "/trader_location_types": {
+      "x-sage-pathtitle": "Trader location types",
+      "get": {
+        "summary": "Trader Location Types",
+        "description": "All customer/supplier addresses have an associated 'type' which defines the business function that the address provides (e.g. Main address, invoice address, etc).<br /><br />Use this API endpoint to return the details of the Trader Location Types that can be used.",
+        "operationId": "GetTraderLocationTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the trader location types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/trader_location_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Trader Location Types"
+        ]
+      }
+    },
+    "/trader_transaction_types": {
+      "x-sage-pathtitle": "Trader transaction types",
+      "get": {
+        "summary": "Trader Transaction Types",
+        "description": "Every transaction within Sage 200 has an associated type which defines what function that transaction performs (e.g. Invoice, Purchase Receipt, Credit Note, etc). These transaction types are pre-defined by the system, cannot be changed, and are common across all instances of Sage 200.<br /><br />Use this API endpoint to return the details of the Trader Transaction Types that can be used.",
+        "operationId": "GetTraderTransactionTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the trader transaction types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/trader_transaction_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Trader Transaction Types"
+        ]
+      }
+    },
+    "/trader_contact_roles": {
+      "x-sage-pathtitle": "Trader contact roles",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Trader Contact Roles",
+        "description": "Get trader contact roles.",
+        "operationId": "GetTraderContactRoles",
+        "responses": {
+          "200": {
+            "description": "The list of trader contact roles has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/trader_contact_role"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Trader Contact Roles"
+        ]
+      }
+    },
+    "/trader_contact_roles/{Id}": {
+      "x-sage-pathtitle": "Trader contact role",
+      "get": {
+        "summary": "Trader Contact Role",
+        "description": "Get Trader Contact Role.",
+        "operationId": "GetTraderContactRole",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the trader contact role.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The details of a trader contact role have been successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/trader_contact_role"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Trader Contact Roles"
+        ]
+      }
+    },
+    "/credit_bureaus": {
+      "x-sage-pathtitle": "Credit bureaus",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Credit Bureaus",
+        "description": "Credit bureaus are third party companies used to assess credit risk.",
+        "operationId": "GetCreditBureaus",
+        "responses": {
+          "200": {
+            "description": "The list of credit bureaus has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/credit_bureau"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Credit Bureaus"
+        ]
+      }
+    },
+    "/credit_bureaus/{Id}": {
+      "x-sage-pathtitle": "Credit bureau",
+      "get": {
+        "summary": "Credit Bureau",
+        "description": "Credit bureaus are third party companies used to assess credit risk.",
+        "operationId": "GetCreditBureau",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the credit bureau.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of credit bureau successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/credit_bureau"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Credit Bureaus"
+        ]
+      }
+    },
+    "/credit_positions": {
+      "x-sage-pathtitle": "Credit positions",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Credit Positions",
+        "description": "Credit positions are used for customer and supplier credit statuses.",
+        "operationId": "GetCreditPositions",
+        "responses": {
+          "200": {
+            "description": "The list of credit positions has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/credit_position"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Credit Positions"
+        ]
+      }
+    },
+    "/credit_positions/{Id}": {
+      "x-sage-pathtitle": "Credit position",
+      "get": {
+        "summary": "Credit Position",
+        "description": "Credit positions are used for customer and supplier credit statuses.",
+        "operationId": "GetCreditPosition",
+        "parameters": [
+          {
+            "name": "Id",
+            "in": "path",
+            "description": "Unique Id of the credit position.",
+            "required": true,
+            "type": "number"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of position successfully returned.",
+            "schema": {
+              "$ref": "#/definitions/credit_position"
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Credit Positions"
+        ]
+      }
+    },
+    "/trader_payment_terms": {
+      "x-sage-pathtitle": "Trader payment terms",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Trader Payment Terms",
+        "description": "Gets the list of Customer and Supplier trading terms which can be used. For example, \"Paid from document date\", or \"Paid from end of month\".",
+        "operationId": "GetTraderPaymentTerms",
+        "responses": {
+          "200": {
+            "description": "The list of trader payment terms has been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/trader_payment_terms"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Trader Payment Terms"
+        ]
+      }
+    },
+    "/aged_balances_ageing_types": {
+      "x-sage-pathtitle": "Aged balances ageing types",
+      "x-sage-changelog": [
+        {
+          "date": "16/09/2020",
+          "title": "New endpoint",
+          "description": "This endpoint was added."
+        }
+      ],
+      "get": {
+        "summary": "Aged Balances Ageing Types",
+        "description": "The ageing type for aged transactions. Ageing type can be 'TransactionDate', 'DueDate', or 'CalendarMonth'.<P>The API endpoint returns details of the ageing types that can be used.</P>",
+        "operationId": "GetAgedBalancesAgeingTypes",
+        "responses": {
+          "200": {
+            "description": "The details of the aged balances ageing types have been successfully returned.",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/aged_balances_ageing_type"
+              }
+            }
+          },
+          "400": {
+            "description": "There was a problem with the request. Request body will include details."
+          }
+        },
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Aged Balances Ageing Types"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "currency": {
+      "type": "object",
+      "description": "Sage 200 works in multiple currencies and each company can configure up to 99 currencies to use., and   all can be configured to use a single exchange rate, period exchange rates, or both. One currency must be configured as the base currency and this cannot be changed once transactions have been entered.<P>If a currency is configured as amendable, the exchange rate can be modified when entering transactions.</P>",
+      "required": [
+        "symbol",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency record Id.",
+          "readOnly": true
+        },
+        "symbol": {
+          "type": "string",
+          "maxLength": 4,
+          "description": "Currency symbol.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Currency name.",
+          "readOnly": true
+        },
+        "core_currency_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "default": 1,
+          "description": "Currency rate in use against base.",
+          "readOnly": true
+        },
+        "euro_currency_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "default": 1,
+          "description": "Euro rate.",
+          "readOnly": true
+        },
+        "is_base_currency": {
+          "type": "boolean",
+          "description": "Flag to indicate if the currency is the base currency.",
+          "readOnly": true
+        },
+        "is_euro_currency": {
+          "type": "boolean",
+          "description": "Flag to indicate if the currency is Euro.",
+          "readOnly": true
+        },
+        "use_for_new_accounts": {
+          "type": "boolean",
+          "description": "Flag to indicate if the currency is used for new or amending customers or suppliers.",
+          "readOnly": true
+        },
+        "exchange_rate_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The type of exchange rate used on the currency.",
+          "default": "ExchangeRateSingle",
+          "readOnly": true
+        },
+        "exchange_rate_amendability_type": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "The type of exchange rate amendability used on the currency.",
+          "readOnly": true
+        },
+        "currency_iso_code_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "ISO Currency Code Record Id.",
+          "readOnly": true
+        },
+        "currency_iso_code": {
+          "type": "object",
+          "description": "The currency ISO code record for the currency.",
+          "readOnly": true
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "exchange_rate_type": {
+      "type": "object",
+      "description": "Exchange rates may change on a daily basis so, a company will configure exchange rates according to their best method for updating. Exchange rates can be configured as 'Single' or 'Period', according to the company preference.<P>The API endpoint returns details of the exchange rate types that can be used.</P>",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "exchange_rate_amendability_type": {
+      "type": "object",
+      "description": "Exchange rate amendability types are used to allow control when and where a currency can be changed within the application. Currencies can be configured as 'Not Amendable', 'Amendable - Cash Postings Only', 'Amendable - All' or 'Fixed to Euro'.<P>The API endpoint returns details of the exchange rate amendability types that can be used.</P>",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "currency_exchange_rate": {
+      "type": "object",
+      "description": "The currency exchange rates that have been specified within the application.",
+      "required": [
+        "currency_from_id",
+        "currency_to_id"
+      ],
+      "properties": {
+        "currency_from_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency record Id to convert from.",
+          "readOnly": true
+        },
+        "currency_from_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The currency from exchange rate.",
+          "readOnly": true
+        },
+        "currency_from_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The currency from value.",
+          "readOnly": true
+        },
+        "currency_from_is_amendable": {
+          "type": "boolean",
+          "description": "Indicates whether the currency from is amendable.",
+          "readOnly": true
+        },
+        "currency_from_no_periods": {
+          "type": "boolean",
+          "description": "Indicates whether the currency from exchange rate has no periods defined.",
+          "readOnly": true
+        },
+        "currency_from_is_expired": {
+          "type": "boolean",
+          "description": "Indicates whether the currency from exchange rate has expired.",
+          "readOnly": true
+        },
+        "currency_to_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency record Id to convert to.",
+          "readOnly": true
+        },
+        "currency_to_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The currency to exchange rate.",
+          "readOnly": true
+        },
+        "currency_to_value": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "description": "The currency to value.",
+          "readOnly": true
+        },
+        "currency_to_is_amendable": {
+          "type": "boolean",
+          "description": "Indicates whether the currency to is amendable.",
+          "readOnly": true
+        },
+        "currency_to_no_periods": {
+          "type": "boolean",
+          "description": "Indicates whether the currency to exchange rate has no periods defined.",
+          "readOnly": true
+        },
+        "currency_to_is_expired": {
+          "type": "boolean",
+          "description": "Indicates whether the currency to exchange rate has expired.",
+          "readOnly": true
+        },
+        "exchange_rate_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The exchange rate type used to acquire the currency exchange rate."
+        },
+        "currency_transaction_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The currency transaction type used to acquire the currency exchange rate."
+        },
+        "transaction_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date of the transaction used to acquire the currency exchange rate."
+        },
+        "exchange_rate": {
+          "type": "number",
+          "format": "decimal 6dp",
+          "description": "The exchange rate between currency from and currency to.",
+          "readOnly": true
+        },
+        "currency_from": {
+          "type": "object",
+          "description": "The currency from.",
+          "readOnly": true
+        },
+        "currency_to": {
+          "type": "object",
+          "description": "The currency to.",
+          "readOnly": true
+        },
+        "currency_base": {
+          "type": "object",
+          "description": "The base currency.",
+          "readOnly": true
+        },
+        "currency_euro": {
+          "type": "object",
+          "description": "The euro currency.",
+          "readOnly": true
+        }
+      }
+    },
+    "currency_transaction_type": {
+      "type": "object",
+      "description": "Currency transaction types are used to determine processing to acquire the exchange rate. Currency transaction type can be 'CurrencyTransactionCash' or 'CurrencyTransactionNonCash'.<P>The API endpoint returns details of the currency transaction types that can be used.</P>",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "account_status_type": {
+      "type": "object",
+      "description": "The account status is used to determine whether a customer, supplier, nominal or bank account is hidden or shown (Sage 200 Standard and versions of Professional released after July 2017). For bank and nominal accounts, status types were added to versions after February 2018. Account status can be configured as 'Active' or 'Hidden'.<P>The API endpoint returns details of the account status types that can be used.</P>",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Enum description."
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Enum value."
+        }
+      }
+    },
+    "allocation_status_type": {
+      "type": "object",
+      "description": "The allocation status is used to determine whether a transaction is allocated in full, in part, or not at all.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description."
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value."
+        }
+      }
+    },
+    "trader_account_type": {
+      "type": "object",
+      "x-sage-professional-only": true,
+      "description": "The trader account type is used to decide how transactions are stored on individual accounts. You can use all three account types in any mix. Use the account types to balance your need for a detailed breakdown of transactions with your need to save disk space. (Sage 200 Professional only, Sage 200 Standard defaults to 'TradingAccountTypeOpenItem')",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Enum description."
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Enum value."
+        }
+      }
+    },
+    "communication_type": {
+      "type": "object",
+      "description": "The communication type is used to indicate the method of communication.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "communication_contact_type": {
+      "type": "object",
+      "description": "The communication contact type indicates the contact type based on the method of communication.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "communication_style_type": {
+      "type": "object",
+      "description": "The communication style type indicates the style of email, letter or fax communication.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "communication_location_type": {
+      "type": "object",
+      "description": "The communication location type indicates the location of a meeting communication.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "communication_outcome_type": {
+      "type": "object",
+      "description": "The communication outcome type indicates the result of a communication.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "document_type": {
+      "type": "object",
+      "description": "These are the type of document used within the application. Document types can be 'Sales Order', 'Sales Invoice', 'Purchase Order', 'Purchase Invoice', 'Customer Statement', 'Sales Credit Notes', 'Customer Debtors Letters', 'Sales Despatch Notes', 'Sales Quotations', 'Purchase CreditNotes', 'Purchase Remittance', 'Purchase Return', 'Sales Proforma', 'Draft Bill', 'Billing Invoice', 'Billing Credit Note', or 'Sales Order Acknowledgement'.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Document type record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "description": "Document type description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "description": "Document type enum value.",
+          "readOnly": true
+        },
+        "is_mandatory": {
+          "type": "boolean",
+          "description": "Whether the document type is mandatory.",
+          "readOnly": true
+        },
+        "trader_contact_role_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Trader contact role record Id.",
+          "readOnly": true
+        },
+        "used_in_module": {
+          "type": "string",
+          "description": "Module in which the document type is used.",
+          "readOnly": true
+        },
+        "trader_contact_role": {
+          "type": "object",
+          "description": "Trader contact role.",
+          "readOnly": true
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "document_layout": {
+      "type": "object",
+      "description": "Document layout are the layouts that are available within the application, which are associated with the document types.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Document layout record Id.",
+          "readOnly": true
+        },
+        "sys_document_type_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Document type record Id.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "Document layout name.",
+          "readOnly": true
+        },
+        "layout": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Document layout layout name.",
+          "readOnly": true
+        },
+        "is_default": {
+          "type": "boolean",
+          "description": "Flag to indicate if this is the default document layout.",
+          "readOnly": true
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "country_code": {
+      "type": "object",
+      "description": "All countries each have a specific code to identify accounts that belong to that country.",
+      "required": [
+        "code",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Country code record Id.",
+          "readOnly": true
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 2,
+          "description": "Country code.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Country name.",
+          "readOnly": true
+        },
+        "eu_member": {
+          "type": "boolean",
+          "description": "Flag to indicate if the country is a member of the EU.",
+          "readOnly": true
+        },
+        "tax_mask": {
+          "type": "object",
+          "description": "Country code tax mask object.",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "format": "int64",
+              "description": "Country code tax mask record Id.",
+              "readOnly": true
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 255,
+              "description": "Country code tax mask name."
+            },
+            "date_time_created": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The date and time this entity was created (UTC).",
+              "readOnly": true
+            },
+            "date_time_updated": {
+              "type": "string",
+              "format": "date-time",
+              "description": "The date and time this entity was last updated (UTC).",
+              "readOnly": true
+            }
+          }
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "tax_code": {
+      "type": "object",
+      "description": "Tax codes are normally used for UK business VAT Rates. They are accessed by Sage 200 modules in order to: <ul><li>- Analyse the rates to Nominal Ledger accounts.</li><li>- Analyse the rates to the VAT Return.</li><li>- Read percentages for calculations in transactions.</li></ul>The API endpoint returns details of the tax codes that can be used.",
+      "required": [
+        "code",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Tax code record Id.",
+          "readOnly": true
+        },
+        "code": {
+          "type": "integer",
+          "format": "int16",
+          "description": "Tax code."
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Name of the tax code."
+        },
+        "tax_rate": {
+          "type": "number",
+          "format": "decimal 2dp",
+          "default": 1,
+          "description": "Tax rate."
+        },
+        "terms": {
+          "type": "string",
+          "maxLength": 54,
+          "description": "Name of the terms.",
+          "readOnly": true
+        },
+        "terms_description": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "Description of the terms.",
+          "readOnly": true
+        },
+        "is_notional_acquisition_tax": {
+          "type": "boolean",
+          "description": "Whether the terms indicate notional acquisition tax is applicable.",
+          "readOnly": true
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "currency_iso_code": {
+      "type": "object",
+      "description": "All currencies have a designated ISO (International Standards Organisation) code that uniquely identifies that currency.",
+      "required": [
+        "code",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Currency ISO code record Id.",
+          "readOnly": true
+        },
+        "code": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "ISO currency code.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "ISO currency name.",
+          "readOnly": true
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "contact_number_type": {
+      "type": "object",
+      "description": "For every customer and supplier, users can store multiple contacts. Each contact can be associated with multiple telephone numbers, mobile numbers, fax numbers, etc. When reading/writing these values, the contact number type is specified.<br /><br />Use this API endpoint to return the definition of a particular contact number type.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Contact number type record Id.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum description.",
+          "readOnly": true
+        }
+      }
+    },
+    "financial_year_period_view": {
+      "type": "object",
+      "description": "This resource returns the details of all accounting periods for all financial years held for the company. A company always has five future financial years and can have unlimited previous years, depending on how long the company has been operating. The default sort (orderby) field are by 'financial_year_start_date' and 'period_number' ascending.",
+      "properties": {
+        "financial_year_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An Id specific to each financial year.",
+          "readOnly": true
+        },
+        "financial_year_start_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the financial year starts. The returned string includes the time but this will always be 00:00:00.",
+          "readOnly": true
+        },
+        "financial_year_end_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the financial year ends. The returned string includes the time but this will always be 00:00:00.",
+          "readOnly": true
+        },
+        "year_relative_to_current_year": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the year relative to the current financial year. The current financial year is 0. The first previous year is -1. The first future year is 1.",
+          "readOnly": true
+        },
+        "number_of_periods_in_year": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The number of periods in the financial year.",
+          "readOnly": true
+        },
+        "accounting_period_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An Id specific to each accounting period.",
+          "readOnly": true
+        },
+        "period_number": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to show the period in relation to the associated year. For example, for a year that starts in January, January will be period 1, February period 2 etc.",
+          "readOnly": true
+        },
+        "period_start_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the period starts. The returned string includes the time but this will always be 00:00:00.",
+          "readOnly": true
+        },
+        "period_end_date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date the period finished. The returned string includes the time but this will always be 00:00:00.",
+          "readOnly": true
+        }
+      }
+    },
+    "financial_report_row_line_type": {
+      "type": "object",
+      "description": "Financial statement layouts are designed to provide a clear representation of your accounts. Each row in a financial layout has an associated 'type'. This list of available types is predefined by the system.</P><P>The API endpoint returns details of financial report row line types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Financial report row line type Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "financial_report_row_layout_position_type": {
+      "type": "object",
+      "description": "Financial statement layouts are designed to provide a clear representation of your accounts. Each row in a financial layout can have an associated layout position 'type'. This list of available types is predefined by the system.</P><P>The API endpoint returns details of financial report row layout position types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Financial report row layout position type Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "financial_report_row_layout_debit_or_credit_type": {
+      "type": "object",
+      "description": "Financial statement layouts are designed to provide a clear representation of your accounts. Each row in a financial layout can have an associated debit or credit 'type'. This list of available types is predefined by the system.</P><P>The API endpoint returns details of financial report row layout debit or credit types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Financial report row layout debit or credit type Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "financial_report_layout_type": {
+      "type": "object",
+      "description": "This list of available types is predefined by the system.</P><P>The API endpoint returns details of financial report layout types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Financial report layout type Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "tax_account_entry_type": {
+      "type": "object",
+      "description": "This list of available types is predefined by the system.</P><P>The API endpoint returns details of tax account entry types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "trading_revaluation_allocation_entry_type": {
+      "type": "object",
+      "description": "This list of available types is predefined by the system.</P><P>The API endpoint returns details of trading revaluation allocation entry types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "financial_report_layout_view": {
+      "type": "object",
+      "description": "Financial statement layouts are designed to provide a clear representation of your accounts. This resource returns the details of all financial statement layouts. The default sort (orderby) field are by 'financial_report_layout_id' and 'financial_report_row_report_row' ascending.",
+      "properties": {
+        "financial_report_layout_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Financial report layout record Id.",
+          "readOnly": true
+        },
+        "financial_report_layout_account_report_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The type of the financial layout.",
+          "readOnly": true
+        },
+        "financial_report_layout_name": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "financial report layout name.",
+          "readOnly": true
+        },
+        "financial_report_row_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An asscoiated financial report row Id.",
+          "readOnly": true
+        },
+        "financial_report_row_line_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The type of the financial layout.",
+          "readOnly": true
+        },
+        "financial_report_row_layout_position_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The type of the financial report row layout position.",
+          "readOnly": true
+        },
+        "financial_report_row_layout_debit_or_credit_type": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "The type of the financial layout.",
+          "readOnly": true
+        },
+        "financial_report_row_report_row": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to show the line number of the report row in the layout.",
+          "readOnly": true
+        },
+        "financial_report_row_title": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "The row title.",
+          "readOnly": true
+        },
+        "financial_report_row_subtotal_group": {
+          "type": "integer",
+          "format": "int16",
+          "description": "Value to represent the sub total group.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_1": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 1.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_2": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 2.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_3": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 3.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_4": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 4.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_5": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 5.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_6": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 6.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_7": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 7.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_8": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 8.",
+          "readOnly": true
+        },
+        "financial_report_row_group_break_9": {
+          "type": "integer",
+          "format": "int32",
+          "description": "Value to represent the report row group break 9.",
+          "readOnly": true
+        },
+        "nominal_account_report_category_id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "An Id specific to each nominal account report category.",
+          "readOnly": true
+        },
+        "nominal_account_report_category_code": {
+          "type": "string",
+          "maxLength": 4,
+          "description": "The nominal account report category code.",
+          "readOnly": true
+        },
+        "nominal_account_report_category_description": {
+          "type": "string",
+          "maxLength": 60,
+          "description": "The nominal account report category description.",
+          "readOnly": true
+        }
+      }
+    },
+    "trader_location_type": {
+      "type": "object",
+      "description": "All customer/supplier addresses have an associated 'type' which defines the business function that the address provides (e.g. Main address, invoice address, etc).<br /><br />Use this API endpoint to return the details of the Trader Location Types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum description."
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value."
+        }
+      }
+    },
+    "trader_transaction_type": {
+      "type": "object",
+      "description": "Every transaction within Sage 200 has an associated type which defines what function that transaction performs (e.g. Invoice, Purchase Receipt, Credit Note, etc). These transaction types are pre-defined by the system, cannot be changed, and are common across all instances of Sage 200.<br /><br />Use this API endpoint to return the details of the Trader Transaction Types that can be used.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Enum description."
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Enum value."
+        }
+      }
+    },
+    "trader_contact_role": {
+      "type": "object",
+      "description": "Customer and Supplier contacts can have one or more roles defined.<br /><br />Use this API endpoint to read from the Trader Contact Roles.",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "The unique Id of the Sage 200 Trader Contact Role.",
+          "readOnly": true
+        },
+        "role": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "The role name.",
+          "readOnly": true
+        },
+        "is_default_role": {
+          "type": "boolean",
+          "description": "Whether or not this is a default role.",
+          "readOnly": true
+        },
+        "is_mandatory": {
+          "type": "boolean",
+          "description": "Whether or not this is a mandatory role.",
+          "readOnly": true
+        },
+        "use_for_customer_accounts": {
+          "type": "boolean",
+          "description": "Whether or not this is used for customer accounts.",
+          "readOnly": true
+        },
+        "use_for_supplier_accounts": {
+          "type": "boolean",
+          "description": "Whether or not this is used for supplier accounts.",
+          "readOnly": true
+        },
+        "use_with_documents": {
+          "type": "boolean",
+          "description": "Whether or not this is used with documents.",
+          "readOnly": true
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "trader_payment_terms": {
+      "type": "object",
+      "description": "Gets the list of Customer and Supplier trading terms which can be used. For example, \"Paid from document date\", or \"Paid from end of month\".",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Trader payment terms record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Description of the trader payment terms.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    },
+    "credit_bureau": {
+      "type": "object",
+      "description": "Credit bureaus are third party companies used to assess credit risk.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Credit bureau Id.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "The credit bureau name."
+        },
+        "website": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "The credit bureau website."
+        },
+        "checking_url": {
+          "type": "string",
+          "maxLength": 255,
+          "description": "The credit bureau checking URL."
+        },
+        "is_default": {
+          "type": "boolean",
+          "default": false,
+          "description": "Indicates whether this is the default credit bureau."
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "credit_position": {
+      "type": "object",
+      "description": "Use credit positions for customer and supplier credit statuses.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Credit position Id.",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "The credit position name."
+        },
+        "is_default": {
+          "type": "boolean",
+          "default": false,
+          "description": "Indicates whether this is the default credit position."
+        },
+        "date_time_created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was created (UTC).",
+          "readOnly": true
+        },
+        "date_time_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date and time this entity was last updated (UTC).",
+          "readOnly": true
+        }
+      }
+    },
+    "aged_balances_ageing_type": {
+      "type": "object",
+      "description": "The ageing type for aged transactions. Ageing type can be 'TransactionDate', 'DueDate', or 'CalendarMonth'.<P>The API endpoint returns details of the ageing types that can be used.</P>",
+      "properties": {
+        "id": {
+          "type": "integer",
+          "format": "int64",
+          "description": "Enum record Id.",
+          "readOnly": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum description.",
+          "readOnly": true
+        },
+        "value": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Enum value.",
+          "readOnly": true
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Account Status Types",
+      "description": ""
+    },
+    {
+      "name": "Aged Balances Ageing Types",
+      "description": ""
+    },
+    {
+      "name": "Allocation Status Types",
+      "description": ""
+    },
+    {
+      "name": "Communication Contact Types",
+      "description": ""
+    },
+    {
+      "name": "Communication Location Types",
+      "description": ""
+    },
+    {
+      "name": "Communication Outcome Types",
+      "description": ""
+    },
+    {
+      "name": "Communication Style Types",
+      "description": ""
+    },
+    {
+      "name": "Communication Types",
+      "description": ""
+    },
+    {
+      "name": "Contact Number Types",
+      "description": ""
+    },
+    {
+      "name": "Country Codes",
+      "description": ""
+    },
+    {
+      "name": "Credit Bureaus",
+      "description": ""
+    },
+    {
+      "name": "Credit Positions",
+      "description": ""
+    },
+    {
+      "name": "Currencies",
+      "description": ""
+    },
+    {
+      "name": "Currency Exchange Rates",
+      "description": ""
+    },
+    {
+      "name": "Currency Iso Codes",
+      "description": ""
+    },
+    {
+      "name": "Currency Transaction Types",
+      "description": ""
+    },
+    {
+      "name": "Document Layouts",
+      "description": ""
+    },
+    {
+      "name": "Document Types",
+      "description": ""
+    },
+    {
+      "name": "Exchange Rate Amendability Types",
+      "description": ""
+    },
+    {
+      "name": "Exchange Rate Types",
+      "description": ""
+    },
+    {
+      "name": "Financial Report Layout Types",
+      "description": ""
+    },
+    {
+      "name": "Financial Report Layout Views",
+      "description": ""
+    },
+    {
+      "name": "Financial Report Row Layout Debit Or Credit Types",
+      "description": ""
+    },
+    {
+      "name": "Financial Report Row Layout Position Types",
+      "description": ""
+    },
+    {
+      "name": "Financial Report Row Line Types",
+      "description": ""
+    },
+    {
+      "name": "Financial Year Period Views",
+      "description": ""
+    },
+    {
+      "name": "Tax Account Entry Types",
+      "description": ""
+    },
+    {
+      "name": "Tax Codes",
+      "description": ""
+    },
+    {
+      "name": "Trader Account Types",
+      "description": ""
+    },
+    {
+      "name": "Trader Contact Roles",
+      "description": ""
+    },
+    {
+      "name": "Trader Location Types",
+      "description": ""
+    },
+    {
+      "name": "Trader Payment Terms",
+      "description": ""
+    },
+    {
+      "name": "Trader Transaction Types",
+      "description": ""
+    },
+    {
+      "name": "Trading Revaluation Allocation Entry Types",
+      "description": ""
+    }
+  ]
+}
