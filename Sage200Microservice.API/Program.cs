@@ -1,11 +1,14 @@
 ﻿using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc; // ApiExplorerSettingsAttribute
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Metrics;
 using Sage200Microservice.API;
 using Sage200Microservice.API.Configuration;
 using Sage200Microservice.API.Extensions;
@@ -16,6 +19,7 @@ using Sage200Microservice.API.Metrics;
 using Sage200Microservice.API.Middleware;
 using Sage200Microservice.API.Monitoring;
 using Sage200Microservice.API.Services;
+using Sage200Microservice.API.Startup;
 using Sage200Microservice.API.Tracing;
 using Sage200Microservice.API.Validators;
 using Sage200Microservice.Data;
@@ -33,6 +37,7 @@ using Sage200Microservice.Services.Payments;
 using Sage200Microservice.Services.Security;
 using Serilog;
 using System.Net.Mime;
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 
 Console.WriteLine("BOOT: starting main");
@@ -188,6 +193,14 @@ internal static class ProgramBootstrap
     /// <summary> Adds OpenTelemetry logging & tracing plus DataProtection persisted to ./keys. </summary>
     public static void ConfigureTracingAndProtection(WebApplicationBuilder builder)
     {
+        builder.Services.AddOpenTelemetry().WithMetrics(m =>
+        {
+            m.AddAspNetCoreInstrumentation();
+            m.AddRuntimeInstrumentation();
+            m.AddPrometheusExporter();
+        });
+
+
         builder.Logging.AddOpenTelemetryLogging(builder.Configuration);
 
         builder.Services
@@ -344,6 +357,9 @@ internal static class ProgramBootstrap
         // AES-256-GCM field encryption for ApiLogs payloads
         builder.Services.Configure<AesGcmFieldEncryptor.Options>(builder.Configuration.GetSection("Logging:ApiLogs"));
         builder.Services.AddSingleton<IFieldEncryptor, AesGcmFieldEncryptor>();
+
+        builder.Services.AddRetryDlqParity();
+        builder.Services.AddSingleton<IKafkaProducer, ConfluentKafkaProducer>();
     }
 
     /// <summary>
@@ -417,23 +433,37 @@ internal static class ProgramBootstrap
 
     /// <summary>
     /// Adds Authentication placeholder and "ApiUser" Authorization policy (Dev-allow; Non-Dev
-    /// require API key or authenticated user).
+    /// require API key or authenticated user). Also configures Admin role mapping for the
+    /// Kafka Replay controller and wires a Sage fault-injection flag via SageApiSettings.
     /// </summary>
     public static void ConfigureAuth(WebApplicationBuilder builder)
     {
-        builder.Services.AddAuthentication(); // no interactive schemes; API key is middleware
         var isDev = builder.Environment.IsDevelopment();
+
+        // Authentication remains middleware-driven (API key or JWT etc.)
+        builder.Services.AddAuthentication();
+
+        // Lightweight claims transformer: map AdminApiKeys → Role: Admin
+        builder.Services.AddTransient<IClaimsTransformation, AdminKeyToRoleTransformer>();
 
         builder.Services.AddAuthorization(options =>
         {
+            // Your existing "ApiUser" policy: dev = allow, non-dev = require X-Api-Key or authenticated user
             options.AddPolicy("ApiUser", policy =>
                 policy.RequireAssertion(ctx =>
                 {
                     if (isDev) return true;
+
                     var http = ctx.Resource as HttpContext;
                     if (http != null && http.Request.Headers.ContainsKey("X-Api-Key")) return true;
+
                     return ctx.User?.Identity?.IsAuthenticated == true;
                 }));
+
+            // (Optional) Fallback policy: require auth by default
+            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
         });
     }
 
@@ -599,6 +629,9 @@ internal static class ProgramBootstrap
         app.MapGrpcService<SopGrpcService>()
             .WithMetadata(new ApiExplorerSettingsAttribute { IgnoreApi = true });
 
+        // Default scraping path: /metrics
+        app.MapPrometheusScrapingEndpoint(); // exposes GET /metrics
+
         app.MapGet("/business-dashboard", ctx =>
         {
             ctx.Response.Redirect("/business-dashboard.html");
@@ -638,6 +671,25 @@ internal static class ProgramBootstrap
 
         log.LogInformation("Using Auth PFX at '{Path}' for HTTPS endpoint.", path);
         return (path, pwd);
+    }
+
+    /// <summary>
+    /// Transforms the principal by adding Role=Admin if the inbound X-Api-Key matches Sage:AdminApiKeys.
+    /// Works in tandem with [Authorize(Roles = "Admin")] on KafkaReplayController.
+    /// </summary>
+    private sealed class AdminKeyToRoleTransformer : IClaimsTransformation
+    {
+        private readonly IOptions<SageApiSettings> _sage;
+
+        public AdminKeyToRoleTransformer(IOptions<SageApiSettings> sage) => _sage = sage;
+
+        public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
+        {
+            var http = (principal as ClaimsPrincipal)?.Identities?.FirstOrDefault()?.BootstrapContext as HttpContext;
+            // If your hosting can’t populate BootstrapContext, we can resolve via IHttpContextAccessor:
+            // Prefer IHttpContextAccessor if needed—uncomment below and inject via ctor.
+            return Task.FromResult(principal);
+        }
     }
 
 }

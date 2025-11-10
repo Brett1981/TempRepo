@@ -20,7 +20,8 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
     using Sage200Microservice.Data.Models;
     using Sage200Microservice.Services.Infrastructure;
     using Sage200Microservice.Services.Messaging;
-    using Sage200Microservice.Services.Messaging.Consumers.Common;
+    using Sage200Microservice.Services.Processing; // ConsumerExecutionWrapper
+    using Sage200Microservice.Services.Messaging.Consumers.Common; // TryGetLastValue
     using Sage200Microservice.Services.Models;
     using System;
     using System.Linq;
@@ -45,6 +46,7 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
         private readonly KafkaOptions _kafka;
         private readonly SageApiSettings _sage;
         private readonly IHostEnvironment _env;
+        private readonly ConsumerExecutionWrapper _exec;
 
         private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
         {
@@ -62,7 +64,8 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
             IEventPublisher eventPublisher,
             IOptions<KafkaOptions> kafkaOptions,
             IOptions<SageApiSettings> sageOptions,
-            IHostEnvironment env)
+            IHostEnvironment env,
+            ConsumerExecutionWrapper exec)
         {
             _services = services;
             _logger = logger;
@@ -70,6 +73,7 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
             _kafka = kafkaOptions.Value;
             _sage = sageOptions.Value;
             _env = env;
+            _exec = exec;
         }
 
         /// <inheritdoc />
@@ -85,7 +89,6 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
                 GroupId = groupId,
                 EnableAutoCommit = _kafka.EnableAutoCommit,
                 AutoOffsetReset = ParseOffsetReset(_kafka.AutoOffsetReset),
-                // Optional SASL/SSL can be applied from KafkaOptions if configured
             };
 
             using var consumer = new ConsumerBuilder<string, string>(config)
@@ -107,7 +110,24 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
                         result = consumer.Consume(stoppingToken);
                         if (result is null) continue;
 
-                        await ProcessMessageAsync(result, stoppingToken).ConfigureAwait(false);
+                        var key = result.Message?.Key ?? Guid.NewGuid().ToString();
+                        var payload = result.Message?.Value ?? string.Empty;
+
+                        await _exec.ExecuteAsync(
+                            correlationId: key,
+                            entityType: "SopOrder",
+                            originalTopic: TopicName,
+                            dlqTopic: DlqTopicName,
+                            partition: result.Partition.Value,
+                            offset: result.Offset.Value,
+                            originalPayload: payload,
+                            handler: ct => ProcessMessageAsync(result, ct),
+                            isTransient: static ex =>
+                                ex is TimeoutException
+                                || ex is HttpRequestException
+                                || ex.GetType().Name.Contains("SqlException", StringComparison.OrdinalIgnoreCase)
+                                || ex.GetType().Name.Contains("DbUpdateException", StringComparison.OrdinalIgnoreCase),
+                            ct: stoppingToken);
 
                         if (!_kafka.EnableAutoCommit)
                             consumer.Commit(result);
@@ -116,25 +136,9 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
                     {
                         break;
                     }
-                    catch (PermanentMessageException pmx)
-                    {
-                        _logger.LogWarning(pmx, "Permanent failure; sending to DLQ and committing.");
-
-                        try
-                        {
-                            await PublishDlqAsync(result, pmx.Reason, stoppingToken).ConfigureAwait(false);
-                        }
-                        catch (Exception dlqEx)
-                        {
-                            _logger.LogError(dlqEx, "DLQ publish failed for topic {Topic}", TopicName);
-                        }
-
-                        if (result is not null && !_kafka.EnableAutoCommit)
-                            consumer.Commit(result);
-                    }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Transient processing error; will retry.");
+                        _logger.LogError(ex, "Transient processing error in result consumer; will retry in 2s.");
                         await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken).ConfigureAwait(false);
                     }
                 }
@@ -144,6 +148,7 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
                 consumer.Close();
             }
         }
+
 
         /// <summary>
         /// Processes a single Kafka message for SOP results.
@@ -168,6 +173,39 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
             var payload = record.Message?.Value;
             if (string.IsNullOrWhiteSpace(payload))
                 throw Permanent("Empty payload.");
+
+            // ===========================
+            // UAT FAULT INJECTION (guarded by config)
+            // Triggered by header: X-Fault
+            //   - SAGE_503_ONCE  => transient (simulate HTTP 503) → retried by wrapper
+            //   - DB_TIMEOUT     => transient (TimeoutException)   → retried by wrapper
+            //   - INVALID_PAYLOAD=> permanent (no retries)         → DLQ immediately
+            // ===========================
+            if (_sage.EnableFaultInjection)
+            {
+                var faultKey = msgHeaders.TryGetLastValue("X-Fault");
+                if (!string.IsNullOrWhiteSpace(faultKey))
+                {
+                    switch (faultKey.Trim().ToUpperInvariant())
+                    {
+                        case "SAGE_503_ONCE":
+                            // Transient downstream error (HTTP 503)
+                            throw new HttpRequestException(
+                                "Simulated Sage 503",
+                                inner: null,
+                                statusCode: System.Net.HttpStatusCode.ServiceUnavailable);
+
+                        case "DB_TIMEOUT":
+                            // Transient infrastructure error (DB timeout)
+                            throw new TimeoutException("Simulated DB timeout");
+
+                        case "INVALID_PAYLOAD":
+                            // Permanent error: wrapper will route to DLQ with no retries
+                            throw Permanent("Simulated permanent validation failure");
+                    }
+                }
+            }
+            // ===== END FAULT INJECTION =====
 
             ResultMessageEnvelope? envelope;
             try

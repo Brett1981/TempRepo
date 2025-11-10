@@ -54,6 +54,15 @@ namespace Sage200Microservice.Services.Models
         /// <summary>Whether Development profile may auto-inject the default API key into outbound Sage requests.</summary>
         public bool AllowDevelopmentFallbackApiKey { get; set; } = true;
 
+        /// <summary>Enable dev/test fault injection via headers (e.g., X-Fault).</summary>
+        public bool EnableFaultInjection { get; set; } = false;
+
+        /// <summary>
+        /// Optional list of API keys that should be treated as Admins (for environments without JWT roles).
+        /// If the inbound X-Api-Key matches one of these, we grant role "Admin" for the request scope.
+        /// </summary>
+        public string[] AdminApiKeys { get; set; } = Array.Empty<string>();
+
         /// <summary>Logging sub-config.</summary>
         public SageApiLoggingSettings Logging { get; set; } = new();
 
