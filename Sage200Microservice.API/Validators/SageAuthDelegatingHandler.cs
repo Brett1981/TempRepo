@@ -1,144 +1,138 @@
-﻿using System;
-using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sage200Microservice.Services.Interfaces;
 using Sage200Microservice.Services.Models;
+using System;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Sage200Microservice.API.Validators
 {
     /// <summary>
-    /// Stamps Authorization bearer, Accept and correlation headers.
-    /// Retries once on 401 after a forced token refresh.
-    /// Does NOT overwrite routing headers (X-Site/X-Company) – that’s handled by SageRoutingHeaderHandler.
+    /// Final step in the pipeline: stamps Authorization and ensures X-Site/X-Company/X-Api-Key are present.
+    /// Works for both HTTP-initiated and background/Kafka calls.
     /// </summary>
     public sealed class SageAuthDelegatingHandler : DelegatingHandler
     {
-        private readonly ILogger<SageAuthDelegatingHandler> _logger;
         private readonly ISageAuthenticationService _auth;
+        private readonly IHttpContextAccessor _http;
+        private readonly IHostEnvironment _env;
         private readonly SageApiSettings _cfg;
-
-        public const string CorrelationHeader = "X-Correlation-Id";
+        private readonly ILogger<SageAuthDelegatingHandler> _log;
 
         public SageAuthDelegatingHandler(
-            ILogger<SageAuthDelegatingHandler> logger,
             ISageAuthenticationService auth,
-            IOptions<SageApiSettings> cfg)
+            IHttpContextAccessor http,
+            IOptions<SageApiSettings> cfg,
+            IHostEnvironment env,
+            ILogger<SageAuthDelegatingHandler> log)
         {
-            _logger = logger;
             _auth = auth;
-            _cfg = cfg.Value ?? new SageApiSettings();
+            _http = http;
+            _env = env;
+            _cfg = cfg.Value;
+            _log = log;
         }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            var correlationId = GetCorrelationId(request);
-            _logger.LogInformation("AuthHandler: Preparing request for {Method} {Uri}. CorrelationId: {CorrelationId}",
-                request.Method, request.RequestUri, correlationId);
+            // Attach Bearer token
+            var token = await _auth.GetAccessTokenAsync(ct);
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            await StampAsync(request, ct);
+            // Ensure routing & caller headers
+            EnsureRoutingHeaders(request);
+            EnsureApiKeyHeader(request);
 
-            _logger.LogInformation("AuthHandler: Stamped request with token via GetAccessTokenAsync. CorrelationId: {CorrelationId}",
-                correlationId);
+            var corr = _http.HttpContext?.TraceIdentifier ?? Guid.NewGuid().ToString("D");
 
-            var resp = await base.SendAsync(request, ct);
+            var response = await base.SendAsync(request, ct);
 
-            // Retry exactly once on 401 after forcing refresh
-            if ((int)resp.StatusCode == 401)
+            if ((int)response.StatusCode == 401)
             {
-                var wwwAuth = resp.Headers.WwwAuthenticate?.ToString() ?? "";
-                _logger.LogWarning("AuthHandler: 401 (first attempt) {Method} {Uri}. WWW-Authenticate: {AuthHeader}. CorrelationId: {CorrelationId}. Forcing refresh.",
-                    request.Method, request.RequestUri, Truncate(wwwAuth, 1024), correlationId);
+                var www = response.Headers.WwwAuthenticate.ToString();
+                _log.LogWarning("AuthHandler: 401 (first attempt) {Method} {Uri}. WWW-Authenticate: {AuthHeader}. CorrelationId: {CorrelationId}. Forcing refresh.",
+                    request.Method, request.RequestUri, www, corr);
 
-                resp.Dispose();
                 await _auth.ForceRefreshAsync(ct);
 
-                using var retry = await CloneAsync(request, ct);
-                var retryCorrelationId = GetCorrelationId(retry);
-                await StampAsync(retry, ct);
+                // retry once with a fresh token
+                var retry = request.Clone(); // extension method you already have; if not, add one as before
+                var newToken = await _auth.GetAccessTokenAsync(ct);
+                retry.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", newToken);
+                EnsureRoutingHeaders(retry);
+                EnsureApiKeyHeader(retry);
 
-                _logger.LogInformation("AuthHandler: Retrying after forced refresh {Method} {Uri}. CorrelationId: {CorrelationId}",
-                    retry.Method, retry.RequestUri, retryCorrelationId);
+                _log.LogInformation("AuthHandler: Retrying after forced refresh {Method} {Uri}. CorrelationId: {CorrelationId}",
+                    retry.Method, retry.RequestUri, corr);
 
-                resp = await base.SendAsync(retry, ct);
-
-                if ((int)resp.StatusCode == 401)
-                {
-                    var retryWwwAuth = resp.Headers.WwwAuthenticate?.ToString() ?? "";
-                    _logger.LogError("AuthHandler: 401 (retry) {Method} {Uri}. WWW-Authenticate: {AuthHeader}. CorrelationId: {CorrelationId}.",
-                        retry.Method, retry.RequestUri, Truncate(retryWwwAuth, 1024), retryCorrelationId);
-                }
+                response.Dispose();
+                return await base.SendAsync(retry, ct);
             }
 
-            return resp;
+            return response;
         }
 
-        private async Task StampAsync(HttpRequestMessage request, CancellationToken ct)
+        private void EnsureRoutingHeaders(HttpRequestMessage request)
         {
-            // Bearer token
-            var token = await _auth.GetAccessTokenAsync(ct);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            // X-Site
+            if (!request.Headers.Contains(_cfg.SiteHeaderName) && !string.IsNullOrWhiteSpace(_cfg.SiteId))
+                request.Headers.TryAddWithoutValidation(_cfg.SiteHeaderName, _cfg.SiteId);
 
-            // Always prefer JSON
-            request.Headers.Accept.Clear();
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            // X-Company
+            if (!request.Headers.Contains(_cfg.CompanyHeaderName) && !string.IsNullOrWhiteSpace(_cfg.CompanyId))
+                request.Headers.TryAddWithoutValidation(_cfg.CompanyHeaderName, _cfg.CompanyId);
+        }
 
-            // Correlation (don’t double-add)
-            if (!request.Headers.Contains(CorrelationHeader))
+        private void EnsureApiKeyHeader(HttpRequestMessage request)
+        {
+            // If we don't want to forward our internal api key to Sage, remove it and return.
+            if (!_cfg.ForwardApiKeyToSage)
             {
-                request.Headers.Add(CorrelationHeader, Guid.NewGuid().ToString("N"));
+                if (request.Headers.Contains(_cfg.ApiKeyHeaderName))
+                    request.Headers.Remove(_cfg.ApiKeyHeaderName);
+                return;
             }
 
-            // IMPORTANT: Do NOT overwrite routing headers here.
-            // SageRoutingHeaderHandler is responsible for X-Site / X-Company / X-Api-Key.
+            // Otherwise (opt-in), inject only in Development if missing and allowed.
+            if (request.Headers.Contains(_cfg.ApiKeyHeaderName))
+                return;
 
-            // OPTIONAL (if you still want fallback here, only add when missing — never overwrite):
-            // TryAddIfMissing(request, _cfg.SiteHeaderName, _cfg.SiteId);
-            // TryAddIfMissing(request, _cfg.CompanyHeaderName, _cfg.CompanyId);
+            if (string.Equals(_env.EnvironmentName, "Development", StringComparison.OrdinalIgnoreCase)
+                && _cfg.AllowDevelopmentFallbackApiKey
+                && !string.IsNullOrWhiteSpace(_cfg.DevelopmentDefaultApiKey))
+            {
+                request.Headers.TryAddWithoutValidation(_cfg.ApiKeyHeaderName, _cfg.DevelopmentDefaultApiKey);
+            }
         }
+    }
 
-        private static void TryAddIfMissing(HttpRequestMessage req, string? name, string? value)
+    internal static class HttpRequestMessageCloneExtensions
+    {
+        /// <summary>
+        /// Clones the HttpRequestMessage for safe one-shot retry while keeping headers and content stream.
+        /// </summary>
+        public static HttpRequestMessage Clone(this HttpRequestMessage request)
         {
-            if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value)) return;
-            if (!req.Headers.Contains(name))
-                req.Headers.TryAddWithoutValidation(name, value);
-        }
+            var clone = new HttpRequestMessage(request.Method, request.RequestUri!);
 
-        private static async Task<HttpRequestMessage> CloneAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            var clone = new HttpRequestMessage(request.Method, request.RequestUri);
-
+            // headers
             foreach (var h in request.Headers)
                 clone.Headers.TryAddWithoutValidation(h.Key, h.Value);
 
-            if (request.Content is not null)
+            // content headers + body (buffered once)
+            if (request.Content != null)
             {
-                var ms = new MemoryStream();
-                await request.Content.CopyToAsync(ms, ct).ConfigureAwait(false);
-                ms.Position = 0;
-                clone.Content = new StreamContent(ms);
-
+                var stream = request.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
+                clone.Content = new ByteArrayContent(stream);
                 foreach (var h in request.Content.Headers)
                     clone.Content.Headers.TryAddWithoutValidation(h.Key, h.Value);
             }
 
             return clone;
         }
-
-        private static string GetCorrelationId(HttpRequestMessage request)
-        {
-            if (request.Headers.TryGetValues(CorrelationHeader, out var values))
-            {
-                foreach (var v in values) { return v ?? "N/A"; }
-            }
-            return "N/A";
-        }
-
-        private static string Truncate(string? value, int maxLength) =>
-            value?.Length > maxLength ? value.Substring(0, maxLength) + "..." : (value ?? "");
     }
 }

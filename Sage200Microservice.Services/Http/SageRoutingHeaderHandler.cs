@@ -1,112 +1,120 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Sage200Microservice.Services.Configuration;
-using Sage200Microservice.Services.Infrastructure;
-using Sage200Microservice.Services.Models;
-using System;
+﻿using System;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Sage200Microservice.Services.Infrastructure;
+using Sage200Microservice.Services.Models;
 
 namespace Sage200Microservice.Services.Http
 {
     /// <summary>
-    /// Ensures all outbound Sage requests include required headers:
-    /// X-Site, X-Company (always), and X-Api-Key (always; Dev fallback allowed).
-    /// Header source precedence:
-    /// 1) Inbound HTTP request headers (if HttpContext exists),
-    /// 2) Ambient SageCallContext (Kafka/scheduled flows),
-    /// 3) appsettings defaults (for Site/Company), and Dev default API key if allowed.
-    /// Logs whenever defaults are applied to aid observability.
+    /// Injects required Sage routing headers (X-Site, X-Company, X-Api-Key) with strict precedence:
+    /// 1) Existing request headers (already present) win.
+    /// 2) Ambient Kafka/worker context via SageCallContext (if present).
+    /// 3) Defaults from appsettings (SageApi:SiteId/CompanyId).
+    /// Additionally, in Development: inject DevelopmentDefaultApiKey if X-Api-Key is missing and allowed.
+    /// Emits X-Routing-Defaults to indicate which defaults were applied: "site,company,apiKey".
     /// </summary>
     public sealed class SageRoutingHeaderHandler : DelegatingHandler
     {
-        private readonly IHttpContextAccessor _httpContextAccessor;
-        private readonly SageApiSettings _settings;
+        private readonly ILogger<SageRoutingHeaderHandler> _log;
+        private readonly IHttpContextAccessor _http;
+        private readonly SageApiSettings _cfg;
         private readonly IHostEnvironment _env;
-        private readonly ILogger<SageRoutingHeaderHandler> _logger;
 
         public SageRoutingHeaderHandler(
-            IHttpContextAccessor httpContextAccessor,
-            IOptions<SageApiSettings> settings,
-            IHostEnvironment env,
-            ILogger<SageRoutingHeaderHandler> logger)
+            ILogger<SageRoutingHeaderHandler> log,
+            IHttpContextAccessor http,
+            IOptions<SageApiSettings> cfg,
+            IHostEnvironment env)
         {
-            _httpContextAccessor = httpContextAccessor;
-            _settings = settings.Value;
+            _log = log;
+            _http = http;
+            _cfg = cfg.Value;
             _env = env;
-            _logger = logger;
         }
 
-        /// <inheritdoc />
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
-            // 1) Try inbound HTTP headers if available.
-            var ctx = _httpContextAccessor.HttpContext;
-            string? site = null, company = null, apiKey = null;
+            // Resolve names once (configurable)
+            var siteHeader = _cfg.SiteHeaderName ?? "X-Site";
+            var compHeader = _cfg.CompanyHeaderName ?? "X-Company";
+            var apiKeyHeader = _cfg.ApiKeyHeaderName ?? "X-Api-Key";
 
+            // 1) Existing headers?
+            bool hasSite = request.Headers.Contains(siteHeader);
+            bool hasComp = request.Headers.Contains(compHeader);
+            bool hasApiKey = request.Headers.Contains(apiKeyHeader);
+
+            // 2) Ambient (Kafka/Background)
+            var ambient = SageCallContext.Current; // could be null
+            string? site = hasSite ? null : ambient?.SiteId;
+            string? comp = hasComp ? null : ambient?.CompanyId;
+            string? apiKey = hasApiKey ? null : ambient?.ApiKey;
+
+            // 3) HTTP context
+            var ctx = _http.HttpContext;
             if (ctx is not null)
             {
-                var reqHeaders = ctx.Request.Headers;
-                if (reqHeaders.TryGetValue(_settings.SiteHeaderName, out var s)) site = s.ToString();
-                if (reqHeaders.TryGetValue(_settings.CompanyHeaderName, out var c)) company = c.ToString();
-                if (reqHeaders.TryGetValue(_settings.ApiKeyHeaderName, out var k)) apiKey = k.ToString();
+                if (!hasSite && string.IsNullOrWhiteSpace(site))
+                    site = HeaderValue(ctx, siteHeader);
+                if (!hasComp && string.IsNullOrWhiteSpace(comp))
+                    comp = HeaderValue(ctx, compHeader);
+                if (!hasApiKey && string.IsNullOrWhiteSpace(apiKey))
+                    apiKey = HeaderValue(ctx, apiKeyHeader);
             }
 
-            // 2) If missing, try ambient Kafka/scheduled context.
-            var ambient = SageCallContext.Current;
-            site ??= ambient?.SiteId;
-            company ??= ambient?.CompanyId;
-            apiKey ??= ambient?.ApiKey;
-
-            // 3) Fill fallbacks (Site/Company ALWAYS; ApiKey only in Dev when allowed).
-            bool siteDefaulted = false, companyDefaulted = false, apiKeyDefaulted = false;
-
-            if (string.IsNullOrWhiteSpace(site))
+            // 4) Defaults from configuration
+            string applied = "";
+            if (!hasSite && string.IsNullOrWhiteSpace(site))
             {
-                site = _settings.SiteId;
-                siteDefaulted = true;
+                site = _cfg.SiteId; applied += "site";
             }
-
-            if (string.IsNullOrWhiteSpace(company))
+            if (!hasComp && string.IsNullOrWhiteSpace(comp))
             {
-                company = _settings.CompanyId;
-                companyDefaulted = true;
+                comp = _cfg.CompanyId; applied += (applied.Length > 0 ? ",company" : "company");
             }
 
-            if (string.IsNullOrWhiteSpace(apiKey))
+            // Dev default API key (only when allowed)
+            if (!hasApiKey && string.IsNullOrWhiteSpace(apiKey) && _env.IsDevelopment() && _cfg.AllowDevelopmentFallbackApiKey)
             {
-                if (_env.IsDevelopment() && _settings.AllowDevelopmentFallbackApiKey && !string.IsNullOrWhiteSpace(_settings.DevelopmentDefaultApiKey))
-                {
-                    apiKey = _settings.DevelopmentDefaultApiKey;
-                    apiKeyDefaulted = true;
-                }
+                apiKey = _cfg.DevelopmentDefaultApiKey;
+                applied += (applied.Length > 0 ? ",apiKey" : "apiKey");
             }
 
-            // Apply headers to outbound request.
-            // (Do not overwrite if caller already added them manually to the HttpRequestMessage.)
-            if (!request.Headers.Contains(_settings.SiteHeaderName) && !string.IsNullOrWhiteSpace(site))
-                request.Headers.TryAddWithoutValidation(_settings.SiteHeaderName, site);
+            // Inject if we resolved values
+            TryAdd(request, siteHeader, site, ref hasSite);
+            TryAdd(request, compHeader, comp, ref hasComp);
+            TryAdd(request, apiKeyHeader, apiKey, ref hasApiKey);
 
-            if (!request.Headers.Contains(_settings.CompanyHeaderName) && !string.IsNullOrWhiteSpace(company))
-                request.Headers.TryAddWithoutValidation(_settings.CompanyHeaderName, company);
-
-            if (!request.Headers.Contains(_settings.ApiKeyHeaderName) && !string.IsNullOrWhiteSpace(apiKey))
-                request.Headers.TryAddWithoutValidation(_settings.ApiKeyHeaderName, apiKey);
-
-            // Observability: log precisely when defaults were applied.
-            if (siteDefaulted || companyDefaulted || apiKeyDefaulted)
+            // Emit a sentinel when defaults were applied (for precise observability)
+            if (!string.IsNullOrWhiteSpace(applied))
             {
-                _logger.LogInformation(
-                    "Sage header defaults applied (Site:{SiteDefaulted}, Company:{CompanyDefaulted}, ApiKey:{ApiKeyDefaulted}) for {Method} {Uri}",
-                    siteDefaulted, companyDefaulted, apiKeyDefaulted, request.Method, request.RequestUri
-                );
+                request.Headers.Remove("X-Routing-Defaults");
+                request.Headers.TryAddWithoutValidation("X-Routing-Defaults", applied);
+                _log.LogInformation("Routing defaults applied: {Applied} (corr={CorrelationId})",
+                    applied, TryGet(request, "X-Correlation-Id"));
             }
 
-            // If API key is still missing in non-Dev, we let upstream enforcement/middleware reject the call.
-            return base.SendAsync(request, cancellationToken);
+            return await base.SendAsync(request, ct).ConfigureAwait(false);
         }
+
+        private static string? HeaderValue(HttpContext ctx, string name)
+            => ctx.Request?.Headers.TryGetValue(name, out var v) == true ? v.ToString() : null;
+
+        private static void TryAdd(HttpRequestMessage req, string name, string? value, ref bool alreadyPresent)
+        {
+            if (alreadyPresent || string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(value)) return;
+            req.Headers.TryAddWithoutValidation(name, value);
+            alreadyPresent = true;
+        }
+
+        private static string? TryGet(HttpRequestMessage req, string name)
+            => req.Headers.TryGetValues(name, out var v) ? v.FirstOrDefault() : null;
     }
 }

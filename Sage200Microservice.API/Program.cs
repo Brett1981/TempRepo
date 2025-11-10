@@ -347,19 +347,19 @@ internal static class ProgramBootstrap
     }
 
     /// <summary>
-    /// Configures named HttpClients (SageAuth, ISageApiClient) + HttpContextAccessor.
-    /// Includes SageRoutingHeaderHandler for automatic header injection (X-Site, X-Company, X-Api-Key).
+    /// Configures named HttpClients (SageAuth, ISageApiClient) + IHttpContextAccessor.
+    /// Ensures header injection happens before logging so logs show final headers.
     /// </summary>
     public static void ConfigureHttpClients(WebApplicationBuilder builder)
     {
-        // === 1. Register individual handlers in DI ===
+        // Handlers
         builder.Services.AddTransient<Sage200Microservice.Services.Http.CorrelationIdHandler>();
         builder.Services.AddTransient<Sage200Microservice.Services.Http.SageApiLoggingHandler>();
         builder.Services.AddTransient<SageAuthDelegatingHandler>();
-        builder.Services.AddTransient<SageRoutingHeaderHandler>(); // <-- NEW: the automatic header injector
+        builder.Services.AddTransient<SageRoutingHeaderHandler>();
         builder.Services.AddHttpContextAccessor();
 
-        // === 2. Register the SageAuth helper client ===
+        // Auth helper (unchanged)
         builder.Services.AddHttpClient("SageAuth", c =>
         {
             c.DefaultRequestHeaders.Add("Accept", "application/json");
@@ -374,7 +374,7 @@ internal static class ProgramBootstrap
             KeepAlivePingTimeout = TimeSpan.FromSeconds(30)
         });
 
-        // === 3. Register the main typed Sage API client ===
+        // Typed client (ISageApiClient): order matters: Correlation → Routing → Auth → Logging → Sockets
         builder.Services.AddHttpClient<ISageApiClient, SageApiClient>((sp, http) =>
         {
             var cfg = sp.GetRequiredService<IOptions<SageApiSettings>>().Value;
@@ -382,14 +382,10 @@ internal static class ProgramBootstrap
                 cfg.BaseUrl.EndsWith("/") ? cfg.BaseUrl : cfg.BaseUrl + "/",
                 UriKind.Absolute);
         })
-        // Handler order = first added executes **last** (inside-out).
-        // So the request pipeline will run:
-        //   HttpClient → SageAuthDelegatingHandler → SageRoutingHeaderHandler → SageApiLoggingHandler → CorrelationIdHandler
-        // The routing handler sits before auth, ensuring headers exist before tokens are attached.
-        .AddHttpMessageHandler<Sage200Microservice.Services.Http.CorrelationIdHandler>()
-        .AddHttpMessageHandler<Sage200Microservice.Services.Http.SageApiLoggingHandler>()
-        .AddHttpMessageHandler<SageRoutingHeaderHandler>()
-        .AddHttpMessageHandler<SageAuthDelegatingHandler>()
+        .AddHttpMessageHandler<Sage200Microservice.Services.Http.CorrelationIdHandler>() // outer
+        .AddHttpMessageHandler<SageRoutingHeaderHandler>()                                // inject X-* headers
+        .AddHttpMessageHandler<SageAuthDelegatingHandler>()                               // add Bearer
+        .AddHttpMessageHandler<Sage200Microservice.Services.Http.SageApiLoggingHandler>() // log FINAL request
         .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
         {
             PooledConnectionLifetime = TimeSpan.FromMinutes(15),

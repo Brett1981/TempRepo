@@ -1,0 +1,16 @@
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\bin\Debug\net9.0\Sage200Microservice.Services.deps.json
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\bin\Debug\net9.0\Sage200Microservice.Services.dll
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\bin\Debug\net9.0\Sage200Microservice.Services.pdb
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\bin\Debug\net9.0\Sage200Microservice.Data.dll
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\bin\Debug\net9.0\Sage200Microservice.Data.pdb
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200Microservice.Services.csproj.AssemblyReference.cache
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200Microservice.Services.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200Microservice.Services.AssemblyInfoInputs.cache
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200Microservice.Services.AssemblyInfo.cs
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200Microservice.Services.csproj.CoreCompileInputs.cache
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200Microservice.Services.sourcelink.json
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200M.FD8DEF80.Up2Date
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200Microservice.Services.dll
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\refint\Sage200Microservice.Services.dll
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\Sage200Microservice.Services.pdb
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Services\obj\Debug\net9.0\ref\Sage200Microservice.Services.dll

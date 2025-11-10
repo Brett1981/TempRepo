@@ -1,0 +1,15 @@
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\bin\Debug\net9.0\Sage200Microservice.Data.deps.json
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\bin\Debug\net9.0\Sage200Microservice.Data.runtimeconfig.json
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\bin\Debug\net9.0\Sage200Microservice.Data.dll
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\bin\Debug\net9.0\Sage200Microservice.Data.pdb
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.csproj.AssemblyReference.cache
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.AssemblyInfoInputs.cache
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.AssemblyInfo.cs
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.csproj.CoreCompileInputs.cache
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.sourcelink.json
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.dll
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\refint\Sage200Microservice.Data.dll
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.pdb
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\Sage200Microservice.Data.genruntimeconfig.cache
+C:\Users\stephen.brett\source\BitBucketRepo\Sage200MicroserviceAdv\Sage200Microservice.Data\obj\Debug\net9.0\ref\Sage200Microservice.Data.dll

@@ -1,85 +1,75 @@
-﻿using System.Text.Encodings.Web;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Primitives;
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Sage200Microservice.Services.Interfaces;
+using Sage200Microservice.Services.Models;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Sage200Microservice.API.Controllers
 {
-    /// <summary>Auth utilities for Sage ID.</summary>
+    /// <summary>
+    /// Authentication utilities for the Sage 200 integration (status + revoke).
+    /// </summary>
     [ApiController]
     [Route("auth")]
+    [Produces("application/json")]
     public sealed class AuthController : ControllerBase
     {
         private readonly ISageAuthenticationService _auth;
-
-        public AuthController(ISageAuthenticationService auth) => _auth = auth;
+        private readonly SageApiSettings _sageApi;
 
         /// <summary>
-        /// Redirects the user to Sage ID to grant consent.
+        /// Creates the controller with access to the authentication service and API settings (for host context).
         /// </summary>
-        [HttpGet("login")]
-        public IActionResult Login([FromQuery] string? returnUrl = "/auth/status")
+        public AuthController(
+            ISageAuthenticationService auth,
+            IOptions<SageApiSettings> sageApiOptions)
         {
-            // generate a simple anti-CSRF state and keep it in a short-lived cookie
-            var state = Guid.NewGuid().ToString("N");
-            Response.Cookies.Append("oauth_state", state, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = Request.IsHttps,
-                SameSite = SameSiteMode.Lax,
-                Expires = DateTimeOffset.UtcNow.AddMinutes(10)
-            });
-
-            var url = _auth.BuildAuthorizeUrl(state);
-            return Redirect(url);
+            _auth = auth ?? throw new ArgumentNullException(nameof(auth));
+            _sageApi = (sageApiOptions ?? throw new ArgumentNullException(nameof(sageApiOptions))).Value;
         }
 
         /// <summary>
-        /// OAuth callback target for Sage ID (handles ?code=&state=).
-        /// </summary>
-        [HttpGet("callback")]
-        public async Task<IActionResult> Callback([FromQuery] string? code, [FromQuery] string? state, CancellationToken ct)
-        {
-            if (string.IsNullOrWhiteSpace(code))
-                return BadRequest(new { message = "Missing ?code." });
-
-            // optional: validate state if we set one
-            if (Request.Cookies.TryGetValue("oauth_state", out var expected) && !string.IsNullOrEmpty(expected))
-            {
-                if (!string.Equals(expected, state, StringComparison.Ordinal))
-                    return BadRequest(new { message = "State mismatch." });
-                Response.Cookies.Delete("oauth_state");
-            }
-
-            var (ok, error) = await _auth.ExchangeCodeForTokensAsync(code, ct);
-            if (!ok) return StatusCode(502, new { message = "OAuth code exchange failed.", error });
-
-            // small, human-friendly html page (handy if launched in a popup)
-            const string html = @"<!doctype html><meta charset=""utf-8"">
-<title>Signed in</title>
-<body style=""font:14px/1.4 system-ui,Segoe UI,Arial"">
-  <h2>✅ Sage ID connected</h2>
-  <p>You can close this tab and return to the app.</p>
-</body>";
-            return Content(html, "text/html; charset=utf-8");
-        }
-
-        /// <summary>
-        /// Returns 200 and token info if a token exists; 404 otherwise.
+        /// Returns 200 and enriched token info if a token exists; 404 otherwise.
+        /// Adds decoded, non-sensitive JWT diagnostics (aud/iss/scopes/expiry).
         /// </summary>
         [HttpGet("status")]
         public async Task<IActionResult> Status(CancellationToken ct)
         {
             var has = await _auth.HasValidTokenAsync(ct);
-            if (!has) return NotFound(new { message = "No OAuth token in store" });
+            if (!has)
+                return NotFound(new { message = "No OAuth token in store" });
 
-            var info = await _auth.GetTokenInfoAsync(ct);
-            return Ok(new
+            var basic = await _auth.GetTokenInfoAsync(ct);             // expiry + hasRefresh flag
+            var decoded = await _auth.GetAccessTokenInfoAsync(ct);     // audience/scopes/issuer/etc.
+
+            var response = new
             {
                 message = "OAuth token available",
-                info?.AccessTokenExpiresUtc,
-                info?.HasRefreshToken
-            });
+                AccessTokenExpiresUtc = basic?.AccessTokenExpiresUtc ?? decoded?.ExpiresUtc,
+                HasRefreshToken = basic?.HasRefreshToken ?? false,
+                Token = new
+                {
+                    Audience = decoded?.Audience,
+                    Scopes = decoded?.Scopes,
+                    Issuer = decoded?.Issuer,
+                    TenantId = decoded?.TenantId,
+                    ClientAppId = decoded?.ClientAppId,
+                    ExpiresUtc = decoded?.ExpiresUtc,
+                    SecondsToExpiry = decoded?.SecondsToExpiry,
+                    BaseUrl = _sageApi?.BaseUrl,
+                    BaseUrlHost = TryParseHost(_sageApi?.BaseUrl)
+                }
+            };
+
+            return Ok(response);
+
+            static string? TryParseHost(string? url)
+            {
+                if (string.IsNullOrWhiteSpace(url)) return null;
+                return Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : null;
+            }
         }
 
         /// <summary>
