@@ -110,13 +110,16 @@ namespace Sage200Microservice.Services.Messaging.Consumers
                             var idempotencyRepo = scope.ServiceProvider.GetRequiredService<IIdempotencyRecordRepository>();
                             var auditLogService = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
 
+                            // NEW: push ambient routing context from Kafka headers (fallback to config).
+                            var hdrs = consumeResult.Message.Headers;
+                            var site = hdrs.TryGetLastValue(_sageApiSettings.SiteHeaderName) ?? _sageApiSettings.SiteId;
+                            var company = hdrs.TryGetLastValue(_sageApiSettings.CompanyHeaderName) ?? _sageApiSettings.CompanyId;
+
+                            using var __ambient = SageCallContext.Push(site, company, apiKey: null); // never send API key to Sage
+
                             await ProcessMessageAsync(
-                                salesInvoicesService,
-                                idempotencyRepo,
-                                auditLogService,
-                                consumeResult,
-                                correlationId,
-                                ct);
+                                salesInvoicesService, idempotencyRepo, auditLogService,
+                                consumeResult, correlationId, ct);
                         },
                         isTransient: static ex =>
                             ex is TimeoutException

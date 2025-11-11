@@ -2,6 +2,7 @@
 // Sage OAuth service with durable refresh-token storage.
 // - Persists refresh token via IOAuthTokenStore (DB-backed, encrypted at rest).
 // - Caches access token in memory and refreshes when near expiry.
+// - Supports both simple and PKCE controller signatures.
 // --------------------------------------------------------------------------------------
 
 using Microsoft.Extensions.Logging;
@@ -25,10 +26,6 @@ using TokenInfo = Sage200Microservice.Services.Interfaces.TokenInfo;
 
 namespace Sage200Microservice.Services.Implementations
 {
-    /// <summary>
-    /// Concrete OAuth helper used by the outbound Sage pipeline and controller diagnostics.
-    /// Matches ISageAuthenticationService signatures used across the solution.
-    /// </summary>
     public sealed class SageAuthenticationService : ISageAuthenticationService
     {
         private static readonly JsonSerializerOptions JsonOpts = new()
@@ -57,7 +54,7 @@ namespace Sage200Microservice.Services.Implementations
             _settings = (options ?? throw new ArgumentNullException(nameof(options))).Value
                         ?? throw new ArgumentNullException(nameof(options));
 
-            // Light normalization (no external extension method needed)
+            // Light normalization
             if (!string.IsNullOrWhiteSpace(_settings.BaseUrl) && !_settings.BaseUrl.EndsWith("/"))
                 _settings.BaseUrl += "/";
             if (string.IsNullOrWhiteSpace(_settings.Scopes))
@@ -71,13 +68,15 @@ namespace Sage200Microservice.Services.Implementations
                 _settings.Scopes, _settings.Audience);
         }
 
+        // =====================================================================
+        // Authorize URL builders
+        // =====================================================================
+
+        // Simple (no PKCE) — matches your request
         public string BuildAuthorizeUrl(string state)
         {
             var enc = UrlEncoder.Default;
-
-            var scopes = string.IsNullOrWhiteSpace(_settings.Scopes)
-                ? "openid offline_access"
-                : _settings.Scopes;
+            var scopes = string.IsNullOrWhiteSpace(_settings.Scopes) ? "openid offline_access" : _settings.Scopes;
 
             return $"{_settings.AuthorizationEndpoint}" +
                    $"?audience={enc.Encode(_settings.Audience ?? string.Empty)}" +
@@ -88,10 +87,49 @@ namespace Sage200Microservice.Services.Implementations
                    $"&state={enc.Encode(state ?? string.Empty)}";
         }
 
-        public Task<(bool Ok, string? Error)> ExchangeCodeForTokensAsync(string code, CancellationToken ct = default)
-            => ExchangeAuthorizationCodeAsync(code, ct);
+        // PKCE-capable overload (safe to keep even if you don’t use it)
+        public string BuildAuthorizeUrl(string state, string codeChallenge, string codeChallengeMethod = "S256",
+                                       IDictionary<string, string>? extraQuery = null)
+        {
+            var url = new StringBuilder(BuildAuthorizeUrl(state));
+            if (!string.IsNullOrWhiteSpace(codeChallenge))
+            {
+                url.Append($"&code_challenge={UrlEncoder.Default.Encode(codeChallenge)}");
+                url.Append($"&code_challenge_method={UrlEncoder.Default.Encode(codeChallengeMethod ?? "S256")}");
+            }
+            if (extraQuery != null)
+            {
+                foreach (var kv in extraQuery)
+                {
+                    url.Append('&');
+                    url.Append(UrlEncoder.Default.Encode(kv.Key));
+                    url.Append('=');
+                    url.Append(UrlEncoder.Default.Encode(kv.Value));
+                }
+            }
+            return url.ToString();
+        }
 
-        private async Task<(bool Ok, string? Error)> ExchangeAuthorizationCodeAsync(string code, CancellationToken ct)
+        // =====================================================================
+        // Authorization code exchange
+        // =====================================================================
+
+        // Simple (no PKCE) — returns (Ok, Error) like your snippet
+        public Task<(bool Ok, string? Error)> ExchangeCodeForTokensAsync(string code, CancellationToken ct = default)
+            => ExchangeAuthorizationCodeAsync(formExtras: null, code, ct);
+
+        // PKCE overload (many controllers expect this shape)
+        public async Task ExchangeCodeForTokensAsync(string code, string codeVerifier, CancellationToken ct = default)
+        {
+            var extras = new Dictionary<string, string> { ["code_verifier"] = codeVerifier ?? string.Empty };
+            var (ok, error) = await ExchangeAuthorizationCodeAsync(extras, code, ct).ConfigureAwait(false);
+            if (!ok) throw new InvalidOperationException(error ?? "OAuth code exchange failed.");
+        }
+
+        private async Task<(bool Ok, string? Error)> ExchangeAuthorizationCodeAsync(
+            IDictionary<string, string>? formExtras,
+            string code,
+            CancellationToken ct)
         {
             try
             {
@@ -106,6 +144,10 @@ namespace Sage200Microservice.Services.Implementations
                 };
                 if (!string.IsNullOrWhiteSpace(_settings.Audience))
                     form["audience"] = _settings.Audience!;
+                if (formExtras != null)
+                {
+                    foreach (var kv in formExtras) form[kv.Key] = kv.Value;
+                }
 
                 var token = await PostFormAsync<TokenResponse>(_settings.TokenEndpoint!, form, ct).ConfigureAwait(false);
 
@@ -125,6 +167,10 @@ namespace Sage200Microservice.Services.Implementations
                 return (false, ex.Message);
             }
         }
+
+        // =====================================================================
+        // Token access / diagnostics
+        // =====================================================================
 
         public async Task<bool> HasRefreshTokenAsync(CancellationToken ct = default)
         {
@@ -244,7 +290,6 @@ namespace Sage200Microservice.Services.Implementations
         {
             try
             {
-                // No RevocationEndpoint in settings — do a local clear only.
                 await _store.ClearAsync().ConfigureAwait(false);
                 _accessToken = null;
                 _accessExpiresUtc = DateTimeOffset.MinValue;
@@ -260,8 +305,13 @@ namespace Sage200Microservice.Services.Implementations
             }
         }
 
+        // =====================================================================
+        // HTTP helper
+        // =====================================================================
+
         private async Task<T> PostFormAsync<T>(string url, IDictionary<string, string> form, CancellationToken ct)
         {
+            // Some IdPs accept either Basic or form client_secret — we send both for compatibility.
             var basic = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{_settings.ClientId}:{_settings.ClientSecret}"));
             _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basic);
             _http.DefaultRequestHeaders.Accept.Clear();

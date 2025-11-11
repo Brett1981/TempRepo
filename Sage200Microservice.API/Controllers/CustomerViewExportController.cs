@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
+using Sage200Microservice.API.Controllers.Infrastructure;
 using Sage200Microservice.Services.Interfaces;
 using System.Text.Json;
 
@@ -7,10 +8,16 @@ namespace Sage200Microservice.API.Controllers
 {
     [ApiController]
     [Route("api/customer-views/export")]
-    public sealed class CustomerViewExportController : ControllerBase
+    [Produces("application/json")]
+    public sealed class CustomerViewExportController : SageRouteControllerBase
     {
         private readonly ISageApiClient _sage;
-        public CustomerViewExportController(ISageApiClient sage) => _sage = sage;
+
+        public CustomerViewExportController(ISageApiClient sage, ILogger<CustomerViewExportController> log)
+            : base(sage, log)
+        {
+            _sage = sage;
+        }
 
         [HttpGet]
         public async Task ExportAsync(
@@ -19,14 +26,21 @@ namespace Sage200Microservice.API.Controllers
             [FromQuery] int maxPages = 10_000,
             CancellationToken ct = default)
         {
+            // Streaming can take a while: give it a longer, but bounded, timeout.
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromMinutes(2));
+
+            // Ensure X-Site/X-Company are present for all upstream calls.
+            await EnsureRoutingAsync(cts.Token);
+
             var wantCsv = !string.Equals(format, "ndjson", StringComparison.OrdinalIgnoreCase);
             var ext = wantCsv ? "csv" : "ndjson";
             var file = $"customer_views_{DateTime.UtcNow:yyyyMMdd_HHmmss}.{ext}";
 
             try
             {
-                // 1) Resolve endpoint + paging (RELATIVE paths only; your BaseUrl already ends with /accounts/v1/)
-                var resolved = await ResolveCustomerViewsPathAsync(pageSize, ct);
+                // 1) Resolve endpoint + paging (RELATIVE paths only; BaseAddress already ends with /accounts/v1/)
+                var resolved = await ResolveCustomerViewsPathAsync(pageSize, cts.Token);
                 if (resolved is null)
                 {
                     var p = new ProblemDetails
@@ -37,7 +51,7 @@ namespace Sage200Microservice.API.Controllers
                     };
                     Response.StatusCode = p.Status!.Value;
                     Response.ContentType = "application/problem+json";
-                    await Response.WriteAsync(JsonSerializer.Serialize(p), ct);
+                    await Response.WriteAsync(JsonSerializer.Serialize(p), cts.Token);
                     return;
                 }
 
@@ -47,7 +61,7 @@ namespace Sage200Microservice.API.Controllers
                 Response.Headers.ContentDisposition = $"attachment; filename=\"{file}\"";
                 Response.Headers.CacheControl = "no-store";
                 Response.ContentType = wantCsv ? "text/csv; charset=utf-8" : "application/x-ndjson; charset=utf-8";
-                await Response.StartAsync(ct);
+                await Response.StartAsync(cts.Token);
 
                 if (wantCsv)
                 {
@@ -55,13 +69,13 @@ namespace Sage200Microservice.API.Controllers
                         "Id,Reference,Name,ShortName,OnHold,Status,Balance,CreditLimit," +
                         "Telephone,Email,Website," +
                         "AddrLine1,AddrLine2,AddrLine3,AddrLine4,City,County,Postcode,Country,CountryCode," +
-                        "CurrencyCode,DateCreated,DateUpdated\r\n", ct);
+                        "CurrencyCode,DateCreated,DateUpdated\r\n", cts.Token);
                 }
 
                 var total = 0;
 
                 // 3) First page
-                var wrote = await WriteItemsAsync(firstPage.RootElement, wantCsv, ct);
+                var wrote = await WriteItemsAsync(firstPage.RootElement, wantCsv, cts.Token);
                 total += wrote;
 
                 // 4) Continue paging
@@ -73,25 +87,25 @@ namespace Sage200Microservice.API.Controllers
                             var skip = wrote;
                             var pages = 1;
 
-                            while (!ct.IsCancellationRequested &&
+                            while (!cts.IsCancellationRequested &&
                                    wrote > 0 &&
                                    pages++ < maxPages)
                             {
-                                await Task.Delay(200, ct);
+                                await Task.Delay(200, cts.Token);
 
                                 var path = !string.IsNullOrWhiteSpace(nextPath)
                                     ? nextPath
                                     : $"customer_views?$top={pageSize}&$skip={skip}";
 
-                                using var doc = await _sage.GetAsync<JsonDocument>(path!, ct);
-                                wrote = await WriteItemsAsync(doc.RootElement, wantCsv, ct);
+                                using var doc = await _sage.GetAsync<JsonDocument>(path!, cts.Token);
+                                wrote = await WriteItemsAsync(doc.RootElement, wantCsv, cts.Token);
                                 if (wrote <= 0) break;
 
                                 total += wrote;
                                 skip += wrote;
                                 nextPath = NormalizeNext(FindNextLink(doc.RootElement));
 
-                                if ((total % 500) == 0) await Response.Body.FlushAsync(ct);
+                                if ((total % 500) == 0) await Response.Body.FlushAsync(cts.Token);
                             }
                             break;
                         }
@@ -99,11 +113,11 @@ namespace Sage200Microservice.API.Controllers
                     case PagingMode.PageNumber:
                         {
                             var page = 2;
-                            while (!ct.IsCancellationRequested &&
+                            while (!cts.IsCancellationRequested &&
                                    wrote == pageSize &&
                                    page <= maxPages)
                             {
-                                await Task.Delay(200, ct);
+                                await Task.Delay(200, cts.Token);
 
                                 var path = QueryHelpers.AddQueryString(rootPath, new Dictionary<string, string?>
                                 {
@@ -111,14 +125,14 @@ namespace Sage200Microservice.API.Controllers
                                     ["pageNumber"] = page.ToString()
                                 });
 
-                                using var doc = await _sage.GetAsync<JsonDocument>(path, ct);
-                                wrote = await WriteItemsAsync(doc.RootElement, wantCsv, ct);
+                                using var doc = await _sage.GetAsync<JsonDocument>(path, cts.Token);
+                                wrote = await WriteItemsAsync(doc.RootElement, wantCsv, cts.Token);
                                 if (wrote <= 0) break;
 
                                 total += wrote;
                                 page++;
 
-                                if ((total % 500) == 0) await Response.Body.FlushAsync(ct);
+                                if ((total % 500) == 0) await Response.Body.FlushAsync(cts.Token);
                             }
                             break;
                         }
@@ -128,7 +142,7 @@ namespace Sage200Microservice.API.Controllers
                         break;
                 }
 
-                if (wantCsv) await Response.WriteAsync($"# rows={total}\r\n", ct);
+                if (wantCsv) await Response.WriteAsync($"# rows={total}\r\n", cts.Token);
                 await Response.CompleteAsync();
             }
             catch (Exception ex)
@@ -143,11 +157,11 @@ namespace Sage200Microservice.API.Controllers
                     };
                     Response.StatusCode = problem.Status!.Value;
                     Response.ContentType = "application/problem+json";
-                    await Response.WriteAsync(JsonSerializer.Serialize(problem), ct);
+                    await Response.WriteAsync(JsonSerializer.Serialize(problem), cts.Token);
                 }
                 else
                 {
-                    await Response.WriteAsync($"\r\n# ERROR: export aborted: {ex.Message}\r\n", ct);
+                    await Response.WriteAsync($"\r\n# ERROR: export aborted: {ex.Message}\r\n", cts.Token);
                     await Response.CompleteAsync();
                 }
             }
@@ -331,10 +345,8 @@ namespace Sage200Microservice.API.Controllers
         private static string? NormalizeNext(string? next)
         {
             if (string.IsNullOrWhiteSpace(next)) return null;
-
             if (Uri.TryCreate(next, UriKind.Absolute, out var abs))
                 next = abs.PathAndQuery;
-
             return next.TrimStart('/');
         }
 

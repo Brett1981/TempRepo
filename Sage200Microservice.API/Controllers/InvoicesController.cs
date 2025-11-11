@@ -4,6 +4,9 @@ using Sage200Microservice.Data.Models;                // Invoice, OrderLine
 using Sage200Microservice.Services.Interfaces;        // IInvoiceService
 using Sage200Microservice.Services.Models;            // SageAllocationHistoryItem
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
+using Sage200Microservice.API.Controllers.Infrastructure; // SageRouteControllerBase
+using System.Net;
 
 namespace Sage200Microservice.API.Controllers
 {
@@ -13,12 +16,16 @@ namespace Sage200Microservice.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public sealed class InvoicesController : ControllerBase
+    public sealed class InvoicesController : SageRouteControllerBase
     {
         private readonly ILogger<InvoicesController> _logger;
         private readonly IInvoiceService _invoiceService;
 
-        public InvoicesController(ILogger<InvoicesController> logger, IInvoiceService invoiceService)
+        public InvoicesController(
+            ISageApiClient sage,                              // required by SageRouteControllerBase
+            ILogger<InvoicesController> logger,
+            IInvoiceService invoiceService)
+            : base(sage, logger)                              // <- IMPORTANT: wire base
         {
             _logger = logger;
             _invoiceService = invoiceService;
@@ -35,21 +42,18 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(typeof(CreateInvoiceResponse), StatusCodes.Status201Created)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<CreateInvoiceResponse>> Create([FromBody] CreateInvoiceRequest request)
+        public async Task<ActionResult<CreateInvoiceResponse>> Create([FromBody] CreateInvoiceRequest request, CancellationToken ct)
         {
             if (request is null || request.Invoice is null || request.Lines is null || request.Lines.Count == 0)
-            {
                 return BadRequest(new ErrorResponse { Message = "Invoice and at least one line are required." });
-            }
 
             try
             {
-                // If you have an identifying field on Invoice (e.g., CustomerId/CustomerRef),
-                // you can add it here for context:
-                // _logger.LogInformation("Creating invoice for CustomerId={CustomerId}", request.Invoice.CustomerId);
+                // Ensure X-Site-Id / X-Company-Id are available for the outbound Sage call
+                await EnsureRoutingAsync(ct);
 
                 var (success, message, orderId, orderRef) =
-                    await _invoiceService.CreateSalesOrderInvoiceAsync(request.Invoice, request.Lines);
+                    await _invoiceService.CreateSalesOrderInvoiceAsync(request.Invoice, request.Lines, ct);
 
                 var resp = new CreateInvoiceResponse
                 {
@@ -64,6 +68,11 @@ namespace Sage200Microservice.API.Controllers
 
                 // Created at GET …/status (location is a convenience)
                 return CreatedAtAction(nameof(GetStatus), new { invoiceReference = orderRef }, resp);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return StatusCode(StatusCodes.Status499ClientClosedRequest,
+                    new ErrorResponse { Message = "Request was cancelled by the client." });
             }
             catch (Exception ex)
             {
@@ -80,15 +89,18 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(typeof(InvoiceStatusResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<InvoiceStatusResponse>> GetStatus([FromRoute, Required] string invoiceReference)
+        public async Task<ActionResult<InvoiceStatusResponse>> GetStatus([FromRoute, Required] string invoiceReference, CancellationToken ct)
         {
             if (string.IsNullOrWhiteSpace(invoiceReference))
                 return NotFound(new ErrorResponse { Message = "Invoice reference is required." });
 
             try
             {
+                // Ensure routing headers before any Sage reads
+                await EnsureRoutingAsync(ct);
+
                 var (success, message, isPaid, isCredited, outstanding, allocated, history) =
-                    await _invoiceService.CheckInvoiceStatusAsync(invoiceReference);
+                    await _invoiceService.CheckInvoiceStatusAsync(invoiceReference, ct);
 
                 if (!success)
                     return NotFound(new ErrorResponse { Message = message });
@@ -105,6 +117,11 @@ namespace Sage200Microservice.API.Controllers
                     AllocationHistory = history ?? new List<SageAllocationHistoryItem>()
                 });
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return StatusCode(StatusCodes.Status499ClientClosedRequest,
+                    new ErrorResponse { Message = "Request was cancelled by the client." });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking status for invoice {Ref}", invoiceReference);
@@ -119,17 +136,25 @@ namespace Sage200Microservice.API.Controllers
         [HttpPost("process-outstanding")]
         [ProducesResponseType(typeof(BatchKickResponse), StatusCodes.Status202Accepted)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<BatchKickResponse>> ProcessOutstanding()
+        public async Task<ActionResult<BatchKickResponse>> ProcessOutstanding(CancellationToken ct)
         {
             try
             {
-                await _invoiceService.ProcessOutstandingInvoicesAsync();
+                // Even though this is server-side work, the service calls Sage; make sure routing is set.
+                await EnsureRoutingAsync(ct);
+
+                await _invoiceService.ProcessOutstandingInvoicesAsync(ct);
 
                 return Accepted(new BatchKickResponse
                 {
                     Accepted = true,
                     Message = "Outstanding invoice processing started."
                 });
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return StatusCode(StatusCodes.Status499ClientClosedRequest,
+                    new ErrorResponse { Message = "Request was cancelled by the client." });
             }
             catch (Exception ex)
             {

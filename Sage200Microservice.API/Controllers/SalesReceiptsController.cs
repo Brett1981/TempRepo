@@ -1,8 +1,4 @@
-﻿// =========================================================================================================
-// SalesReceiptsController.cs — CONTROLLER (ProblemDetails mapping, ExternalRefs↔URN linking, fixed EntityType)
-// =========================================================================================================
-
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sage200Microservice.API.Attributes;
 using Sage200Microservice.Data;
@@ -46,7 +42,7 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status502BadGateway)]
-        //[SageRoutingHeaders(RequiresIdempotencyKey = true)]
+        [SageRoutingHeaders(RequiresIdempotencyKey = true)] // <- enable if you want parity with other create endpoints
         public async Task<IActionResult> CreateAsync([FromBody] SalesReceiptCreate body, CancellationToken ct)
         {
             if (!ModelState.IsValid)
@@ -60,15 +56,15 @@ namespace Sage200Microservice.API.Controllers
                 });
             }
 
-            // Resolve AppId when externalRefs provided without AppId (same pattern as Payments/Invoices)
+            // Resolve AppId when ExternalRefs are provided without AppId (same pattern as Payments/Invoices)
             int? headerAppId = null;
             if (body.ExternalRefs is { Count: > 0 } && body.ExternalRefs.Exists(x => x.AppId is null))
             {
                 var apiKey = Request.Headers["X-Api-Key"].ToString();
                 if (!string.IsNullOrWhiteSpace(apiKey))
                 {
-                    var keyRow = await _apiKeys.GetByKeyAsync(apiKey) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey);
-                    var valid = await _apiKeys.IsValidKeyAsync(apiKey);
+                    var keyRow = await _apiKeys.GetByKeyAsync(apiKey, ct) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey, ct);
+                    var valid = await _apiKeys.IsValidKeyAsync(apiKey, ct);
                     if (keyRow == null || !valid)
                         return StatusCode(StatusCodes.Status401Unauthorized, new ProblemDetails
                         {
@@ -77,7 +73,8 @@ namespace Sage200Microservice.API.Controllers
                             Status = StatusCodes.Status401Unauthorized,
                             Detail = "API key could not be resolved to a valid AppId."
                         });
-                    await _apiKeys.UpdateLastUsedAsync(apiKey);
+
+                    await _apiKeys.UpdateLastUsedAsync(apiKey, ct);
                     headerAppId = keyRow.Id;
                 }
             }
@@ -136,8 +133,7 @@ namespace Sage200Microservice.API.Controllers
                             await _links.TryInsertAsync(new ExternalIdLink
                             {
                                 AppId = appId,
-                                // FIX: use the correct entity type for receipts (was SalesInvoice before)
-                                EntityType = ExternalEntityType.SalesReceipt,
+                                EntityType = ExternalEntityType.SalesReceipt, // correct entity type
                                 SageId = null,
                                 SageUrn = sageUrn,
                                 ExternalRef = item.ExternalRef

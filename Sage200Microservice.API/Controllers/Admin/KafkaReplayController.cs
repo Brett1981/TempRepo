@@ -1,14 +1,9 @@
-﻿using System;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sage200Microservice.API.DTOs;
-using Sage200Microservice.Services.Messaging.Contracts;
-using Sage200Microservice.Services.Messaging.Publishing;
-
+using Sage200Microservice.Services.Messaging.Contracts;   // DlqEnvelope
+using Sage200Microservice.Services.Messaging.Publishing;  // IKafkaProducer
 
 namespace Sage200Microservice.API.Controllers.Admin
 {
@@ -17,9 +12,8 @@ namespace Sage200Microservice.API.Controllers.Admin
     [Authorize(Roles = "Admin")] // Admin gating
     public sealed class KafkaReplayController : ControllerBase
     {
-        private readonly DlqPublisher _dlqPublisher;
+        private readonly DlqPublisher _dlqPublisher; // kept for future use (e.g., re-DLQ) even if unused now
         private readonly IKafkaProducer _producer;
-
 
         public KafkaReplayController(DlqPublisher dlqPublisher, IKafkaProducer producer)
         {
@@ -27,10 +21,8 @@ namespace Sage200Microservice.API.Controllers.Admin
             _producer = producer;
         }
 
-
         /// <summary>
         /// Accepts a DLQ payload and republishes the original message to its original topic (or an override).
-        /// This provides manual replay capability for operators after resolving root cause.
         /// </summary>
         [HttpPost]
         [ProducesResponseType(StatusCodes.Status202Accepted)]
@@ -39,11 +31,10 @@ namespace Sage200Microservice.API.Controllers.Admin
         {
             if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
-
+            // Telemetry
             Sage200Microservice.Data.Telemetry.Metrics.ReplayRequestsTotal.Add(1);
 
-
-            // Try to parse as DlqEnvelope first — if successful, use its OriginalPayload; otherwise, treat as raw payload
+            // If body is a DlqEnvelope, use OriginalPayload; otherwise treat body as the raw original payload.
             string originalPayload;
             try
             {
@@ -52,17 +43,14 @@ namespace Sage200Microservice.API.Controllers.Admin
             }
             catch
             {
-                originalPayload = request.DlqPayloadJson; // fallback to raw payload
+                originalPayload = request.DlqPayloadJson;
             }
 
-
             var targetTopic = string.IsNullOrWhiteSpace(request.TargetTopicOverride)
-            ? request.OriginalTopic
-            : request.TargetTopicOverride!;
-
+                ? request.OriginalTopic
+                : request.TargetTopicOverride!;
 
             await _producer.ProduceAsync(targetTopic, request.CorrelationId, originalPayload, ct).ConfigureAwait(false);
-
 
             return Accepted(new
             {

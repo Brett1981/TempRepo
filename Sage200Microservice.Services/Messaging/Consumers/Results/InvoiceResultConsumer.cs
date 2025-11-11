@@ -125,6 +125,7 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
                         result = consumer.Consume(stoppingToken);
                         if (result is null) continue;
 
+                        var headers = result.Message?.Headers;
                         var key = result.Message?.Key ?? Guid.NewGuid().ToString();
                         var payload = result.Message?.Value ?? string.Empty;
 
@@ -136,16 +137,32 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
                             partition: result.Partition.Value,
                             offset: result.Offset.Value,
                             originalPayload: payload,
-                            handler: ct => ProcessMessageAsync(result, ct),
+
+                            // Inject ambient routing so SageRoutingHeaderHandler can add X-Site/X-Company
+                            handler: async ct =>
+                            {
+                                // Prefer Kafka headers; fall back to configured defaults
+                                var site = headers?.TryGetLastValue(_sage.SiteHeaderName) ?? _sage.SiteId;
+                                var company = headers?.TryGetLastValue(_sage.CompanyHeaderName) ?? _sage.CompanyId;
+
+                                using var __ambient = SageCallContext.Push(site, company, apiKey: null); // never forward service API key
+                                await ProcessMessageAsync(result, ct).ConfigureAwait(false);
+                            },
+
+                            // Retry classifier (transient → backoff; else DLQ)
                             isTransient: static ex =>
                                 ex is TimeoutException
                                 || ex is HttpRequestException
                                 || ex.GetType().Name.Contains("SqlException", StringComparison.OrdinalIgnoreCase)
                                 || ex.GetType().Name.Contains("DbUpdateException", StringComparison.OrdinalIgnoreCase),
-                            ct: stoppingToken);
 
+                            ct: stoppingToken
+                        ).ConfigureAwait(false);
+
+                        // Commit offset after processing (or after DLQ when retries exhausted)
                         if (!_kafka.EnableAutoCommit)
                             consumer.Commit(result);
+
                     }
                     catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                     {

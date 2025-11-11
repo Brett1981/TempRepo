@@ -18,7 +18,7 @@ namespace Sage200Microservice.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/sop/orders")]
-[Authorize(Policy = "ApiUser")]
+[Produces("application/json")]
 public sealed class SopOrdersController : ControllerBase
 {
     /// <summary>
@@ -31,7 +31,6 @@ public sealed class SopOrdersController : ControllerBase
     private readonly ILogger<SopOrdersController> _log;
     private readonly IConfiguration _cfg;
 
-    // Step 2 additions
     private readonly ApplicationContext _db;
     private readonly IExternalIdLinkRepository _links;
     private readonly IApiKeyRepository _apiKeys;
@@ -87,7 +86,7 @@ public sealed class SopOrdersController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    // [SageRoutingHeaders(RequiresIdempotencyKey = true)] // uncomment if you want headers shown in Swagger here
+    // [SageRoutingHeaders(RequiresIdempotencyKey = true)]
     public async Task<IActionResult> CreateAsync([FromBody] SopOrderCreate body, CancellationToken ct)
     {
         if (!_cfg.GetValue("Features:Sop:OrdersCreateEnabled", true)) return NotFound();
@@ -102,8 +101,9 @@ public sealed class SopOrdersController : ControllerBase
             var apiKey = Request.Headers["X-Api-Key"].ToString();
             if (!string.IsNullOrWhiteSpace(apiKey))
             {
-                var keyRow = await _apiKeys.GetByKeyAsync(apiKey) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey);
-                var valid = await _apiKeys.IsValidKeyAsync(apiKey);
+                var keyRow = await _apiKeys.GetByKeyAsync(apiKey, ct)
+                             ?? await _apiKeys.GetByPreviousKeyAsync(apiKey, ct);
+                var valid = await _apiKeys.IsValidKeyAsync(apiKey, ct);
                 if (keyRow == null || !valid)
                 {
                     return StatusCode(StatusCodes.Status401Unauthorized, new ProblemDetails
@@ -114,7 +114,7 @@ public sealed class SopOrdersController : ControllerBase
                         Detail = "API key could not be resolved to a valid AppId."
                     });
                 }
-                await _apiKeys.UpdateLastUsedAsync(apiKey);
+                await _apiKeys.UpdateLastUsedAsync(apiKey, ct);
                 headerAppId = keyRow.Id;
             }
         }
@@ -130,11 +130,9 @@ public sealed class SopOrdersController : ControllerBase
                     Type = "https://httpstatuses.com/502",
                     Title = "Upstream Sage error",
                     Status = StatusCodes.Status502BadGateway,
-                    Detail =
-                        // Use UpstreamPreview (short body); if your result uses UpstreamBody instead, swap the property name here.
-                        string.IsNullOrWhiteSpace(result.UpstreamBody)
-                            ? (result.Message ?? "Upstream error from Sage.")
-                            : result.UpstreamBody
+                    Detail = string.IsNullOrWhiteSpace(result.UpstreamBody)
+                        ? (result.Message ?? "Upstream error from Sage.")
+                        : result.UpstreamBody
                 };
                 return StatusCode(StatusCodes.Status502BadGateway, pd);
             }
@@ -150,7 +148,6 @@ public sealed class SopOrdersController : ControllerBase
                 SageId = result.OrderId,
                 EntityType = ExternalEntityType.SopOrder,
                 CreatedUtc = DateTime.UtcNow,
-                // ExternalRef choice: prefer request header ID; fall back as per your existing order
                 ExternalRef = body.Header?.SourceExternalId
                               ?? body.ExternalRefs?.FirstOrDefault()?.ExternalRef
                               ?? body.Header?.CustomerReference
@@ -169,16 +166,7 @@ public sealed class SopOrdersController : ControllerBase
     /// Returns SOP orders that are "Outstanding" by WHITELIST:
     /// Live(0), On hold(1), Disputed(3), Draft(5), Printed(6).
     /// Lists outstanding SOP orders. Supports OData paging/sort and friendly filters.
-    /// We omit $count to avoid upstream 5xx seen on some tenants, and provide a whitelist of status codes.
     /// </summary>
-    /// <param name="filter">$filter passthrough (optional). Will be AND-ed with the whitelist predicate.</param>
-    /// <param name="orderBy">$orderby (optional).</param>
-    /// <param name="top">$top (optional; defaults may apply in helper).</param>
-    /// <param name="skip">$skip (optional).</param>
-    /// <param name="customerId">Friendly filter: customer id.</param>
-    /// <param name="orderNo">Friendly filter: order number.</param>
-    /// <param name="fromDate">Friendly filter: order_date >= fromDate (UTC assumed).</param>
-    /// <param name="toDate">Friendly filter: order_date &lt;= toDate (UTC assumed).</param>
     [HttpGet("outstanding")]
     [ProducesResponseType(typeof(PagedResult<SopOrderDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetOutstandingAsync(

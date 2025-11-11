@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sage200Microservice.API.Attributes;
+using Sage200Microservice.API.Controllers.Infrastructure;
 using Sage200Microservice.API.DTOs;
 using Sage200Microservice.API.Models.Customers;
 using Sage200Microservice.API.Validators;
@@ -23,7 +24,7 @@ namespace Sage200Microservice.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public partial class CustomersController : ControllerBase
+    public partial class CustomersController : SageRouteControllerBase
     {
         private readonly ISageApiClient _sage;
         private readonly ILogger<CustomersController> _log;
@@ -39,6 +40,7 @@ namespace Sage200Microservice.API.Controllers
             ApplicationContext db,
             IExternalIdLinkRepository links,
             IApiKeyRepository apiKeys)
+            : base(sage, log) // <-- IMPORTANT: call the SageRouteControllerBase ctor
         {
             _sage = sage;
             _log = log;
@@ -70,6 +72,9 @@ namespace Sage200Microservice.API.Controllers
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
+
+            // Ensure X-Site & X-Company are available (inbound headers -> ambient -> /sites fallback)
+            await EnsureRoutingAsync(cts.Token);
 
             if (top <= 0) top = 100;
             if (top > 100) top = 100;
@@ -206,6 +211,8 @@ namespace Sage200Microservice.API.Controllers
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
+            await EnsureRoutingAsync(cts.Token); // <-- important
+
             var eq = EscapeOData(reference);
 
             try
@@ -268,6 +275,7 @@ namespace Sage200Microservice.API.Controllers
 
             try
             {
+                await EnsureRoutingAsync(ct); // <-- important
                 // Convert to local entity
                 var customer = new Sage200Microservice.Data.Models.Customer
                 {
@@ -418,6 +426,8 @@ namespace Sage200Microservice.API.Controllers
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(TimeSpan.FromSeconds(10));
 
+            await EnsureRoutingAsync(cts.Token); // <-- important
+
             // If the route value looks like a numeric Id, resolve to reference first
             var originalRouteValue = code;
             if (IsAllDigits(code) && long.TryParse(code, out var id))
@@ -496,7 +506,7 @@ namespace Sage200Microservice.API.Controllers
         $"customer_views?$filter=id eq {id}&$select=reference&$top=1",
         $"lookup_customers?$filter=id eq {id}&$select=reference&$top=1"
     };
-
+            await EnsureRoutingAsync(ct); // <-- important
             foreach (var path in candidates)
             {
                 try

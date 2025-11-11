@@ -182,11 +182,8 @@ namespace Sage200Microservice.Services.Implementations
 
                     if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized && attempt == 1)
                     {
-                        var www = string.Join("; ", resp.Headers.WwwAuthenticate);
-                        var peek = await resp.Content.ReadAsStringAsync(ct);
-                        _logger.LogWarning("401 from {Endpoint}. WWW-Authenticate: {Auth}. Body: {Body}",
-                            endpoint, www, peek.Length > 300 ? peek[..300] + "…" : peek);
-                        resp.EnsureSuccessStatusCode();
+                        _logger.LogWarning("401 from {Endpoint}; relying on AuthHandler refresh + retry path already executed.", relative);
+                        resp.EnsureSuccessStatusCode(); // throw to bubble 401
                     }
 
                     if ((int)resp.StatusCode == 429 ||
@@ -213,19 +210,32 @@ namespace Sage200Microservice.Services.Implementations
                             var body = await resp.Content.ReadAsStringAsync(ct);
                             var level = resp.StatusCode == System.Net.HttpStatusCode.NotFound ||
                                         resp.StatusCode == System.Net.HttpStatusCode.BadRequest
-                                            ? LogLevel.Information : LogLevel.Error;
+                                ? LogLevel.Information : LogLevel.Error;
+
                             _logger.Log(level, "GET {Endpoint} failed {Status}. Not retrying. Body: {Body}",
                                 endpoint, (int)resp.StatusCode, body);
+
                             resp.EnsureSuccessStatusCode(); // throw
                         }
 
                         resp.EnsureSuccessStatusCode(); // throw for anything else
                     }
 
+                    // ---- SUCCESS PATH ----
                     var json = await resp.Content.ReadAsStringAsync(ct);
-                    var result = JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    // If caller asked for a string, return the raw body verbatim.
+                    if (typeof(T) == typeof(string))
+                        return (T)(object)json;
+
+                    // Otherwise, deserialize JSON into T.
+                    var result = JsonSerializer.Deserialize<T>(json, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+
                     if (result == null)
-                        throw new Exception($"Failed to deserialize response from {endpoint}");
+                        throw new JsonException($"Failed to deserialize response from {endpoint} to {typeof(T).Name}");
 
                     return result;
                 }
@@ -249,6 +259,7 @@ namespace Sage200Microservice.Services.Implementations
 
             throw new InvalidOperationException($"Exhausted retries for GET {endpoint}");
         }
+
 
         public async Task<(int StatusCode, string Body)> PostForBodyAsync<TRequest>(string relativeUrl, TRequest body, IDictionary<string, string>? headers, CancellationToken ct)
         {

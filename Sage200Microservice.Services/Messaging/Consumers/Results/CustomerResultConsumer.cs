@@ -108,12 +108,15 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
 
                     try
                     {
+                        // Consume next record
                         result = consumer.Consume(stoppingToken);
-                        if (result is null) continue;
+                        if (result is null) return; // or continue, depending on your surrounding loop
 
+                        var headers = result.Message?.Headers;
                         var key = result.Message?.Key ?? Guid.NewGuid().ToString();
                         var payload = result.Message?.Value ?? string.Empty;
 
+                        // Execute with standard retry/DLQ wrapper
                         await _exec.ExecuteAsync(
                             correlationId: key,
                             entityType: "Customer",
@@ -122,14 +125,29 @@ namespace Sage200Microservice.Services.Messaging.Consumers.Results
                             partition: result.Partition.Value,
                             offset: result.Offset.Value,
                             originalPayload: payload,
-                            handler: ct => ProcessMessageAsync(result, ct),
+
+                            // IMPORTANT: push ambient routing context so Sage calls receive X-Site/X-Company
+                            handler: async ct =>
+                            {
+                                // Pull site/company from Kafka headers, fallback to configured defaults
+                                var site = headers?.TryGetLastValue(_sage.SiteHeaderName) ?? _sage.SiteId;
+                                var company = headers?.TryGetLastValue(_sage.CompanyHeaderName) ?? _sage.CompanyId;
+
+                                using var __ambient = SageCallContext.Push(site, company, apiKey: null); // never forward microservice API key
+                                await ProcessMessageAsync(result, ct).ConfigureAwait(false);
+                            },
+
+                            // Transient classifier (retry 10s/30s/2m; DLQ after 3 attempts)
                             isTransient: static ex =>
                                 ex is TimeoutException
                                 || ex is HttpRequestException
                                 || ex.GetType().Name.Contains("SqlException", StringComparison.OrdinalIgnoreCase)
                                 || ex.GetType().Name.Contains("DbUpdateException", StringComparison.OrdinalIgnoreCase),
-                            ct: stoppingToken);
 
+                            ct: stoppingToken
+                        ).ConfigureAwait(false);
+
+                        // Commit offset whether success or DLQ (wrapper publishes to DLQ on exhaustion)
                         if (!_kafka.EnableAutoCommit)
                             consumer.Commit(result);
                     }

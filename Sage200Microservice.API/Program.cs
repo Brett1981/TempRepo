@@ -396,12 +396,14 @@ internal static class ProgramBootstrap
         builder.Services.AddHttpClient<ISageApiClient, SageApiClient>((sp, http) =>
         {
             var cfg = sp.GetRequiredService<IOptions<SageApiSettings>>().Value;
-            http.BaseAddress = new Uri(cfg.BaseUrl.EndsWith("/") ? cfg.BaseUrl : cfg.BaseUrl + "/", UriKind.Absolute);
+            http.BaseAddress = new Uri(
+                cfg.BaseUrl.EndsWith("/") ? cfg.BaseUrl : cfg.BaseUrl + "/",
+                UriKind.Absolute);
         })
-        .AddHttpMessageHandler<Sage200Microservice.Services.Http.CorrelationIdHandler>() // outermost
-        .AddHttpMessageHandler<SageRoutingHeaderHandler>()                                // X-Site/X-Company
-        .AddHttpMessageHandler<SageAuthDelegatingHandler>()                               // Bearer
-        .AddHttpMessageHandler<Sage200Microservice.Services.Http.SageApiLoggingHandler>() // log FINAL request
+        .AddHttpMessageHandler<Sage200Microservice.Services.Http.CorrelationIdHandler>()  // outermost
+        .AddHttpMessageHandler<SageRoutingHeaderHandler>()                                 // resolves X-Site/X-Company
+        .AddHttpMessageHandler<SageAuthDelegatingHandler>()                                // adds Bearer (needs to run before logging)
+        .AddHttpMessageHandler<Sage200Microservice.Services.Http.SageApiLoggingHandler>()  // innermost (logs final request)
         .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
         {
             PooledConnectionLifetime = TimeSpan.FromMinutes(15),
@@ -428,6 +430,8 @@ internal static class ProgramBootstrap
         builder.Services.AddHostedService<AuditLogCleanupService>();
 
         builder.Services.AddDistributedMemoryCache();
+        builder.Services.AddSingleton<Sage200Microservice.Services.Auth.IOAuthStateStore,
+                              Sage200Microservice.Services.Auth.OAuthStateStore>();
         builder.Services.AddSingleton<IDistributedCache, MemoryDistributedCache>();
     }
 
@@ -628,6 +632,7 @@ internal static class ProgramBootstrap
     /// </summary>
     public static void MapEndpoints(WebApplication app)
     {
+
         app.MapControllers();
 
         app.MapGrpcService<InvoiceGrpcService>()

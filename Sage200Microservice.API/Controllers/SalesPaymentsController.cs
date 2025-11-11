@@ -27,9 +27,6 @@ namespace Sage200Microservice.API.Controllers
         private readonly ApiMetrics? _apiMetrics;
         private readonly IPaymentsAllocationService _allocations;
 
-        /// <summary>
-        /// Constructs the controller with required dependencies.
-        /// </summary>
         public SalesPaymentsController(
             ILogger<SalesPaymentsController> logger,
             ISalesPaymentsService svc,
@@ -47,9 +44,9 @@ namespace Sage200Microservice.API.Controllers
             _apiMetrics = apiMetrics;
             _allocations = allocations;
         }
+
         /// <summary>
-        /// POST /api/SalesPayments
-        /// Creates a Sales Payment (POST /sales_payments), returning the URN on success.
+        /// POST /api/SalesPayments — Creates a Sales Payment (POST /sales_payments), returning the URN on success.
         /// </summary>
         [HttpPost]
         [Consumes("application/json")]
@@ -62,8 +59,8 @@ namespace Sage200Microservice.API.Controllers
         [SageRoutingHeaders(RequiresIdempotencyKey = true)]
         public async Task<IActionResult> CreateAsync([FromBody] SalesPaymentCreate body, CancellationToken ct)
         {
-            // Prometheus: track active POST /api/SalesPayments requests
-            using var _ = _apiMetrics.TrackApiRequest("POST", "/api/SalesPayments");
+            using var _ = _apiMetrics?.TrackApiRequest("POST", "/api/SalesPayments");
+
             if (!ModelState.IsValid)
             {
                 return BadRequest(new ProblemDetails
@@ -82,8 +79,8 @@ namespace Sage200Microservice.API.Controllers
                 var apiKey = Request.Headers["X-Api-Key"].ToString();
                 if (!string.IsNullOrWhiteSpace(apiKey))
                 {
-                    var keyRow = await _apiKeys.GetByKeyAsync(apiKey) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey);
-                    var valid = await _apiKeys.IsValidKeyAsync(apiKey);
+                    var keyRow = await _apiKeys.GetByKeyAsync(apiKey, ct) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey, ct);
+                    var valid = await _apiKeys.IsValidKeyAsync(apiKey, ct);
                     if (keyRow == null || !valid)
                         return StatusCode(StatusCodes.Status401Unauthorized, new ProblemDetails
                         {
@@ -92,7 +89,7 @@ namespace Sage200Microservice.API.Controllers
                             Status = StatusCodes.Status401Unauthorized,
                             Detail = "API key could not be resolved to a valid AppId."
                         });
-                    await _apiKeys.UpdateLastUsedAsync(apiKey);
+                    await _apiKeys.UpdateLastUsedAsync(apiKey, ct);
                     headerAppId = keyRow.Id;
                 }
             }
@@ -136,7 +133,7 @@ namespace Sage200Microservice.API.Controllers
 
             var sageUrn = result.Urn!;
 
-            // Persist ExternalRefs -> URN links (same pattern as invoices/credit notes)
+            // Persist ExternalRefs -> URN links
             var strategy = _db.Database.CreateExecutionStrategy();
             await strategy.ExecuteAsync(async () =>
             {
@@ -151,7 +148,6 @@ namespace Sage200Microservice.API.Controllers
                             await _links.TryInsertAsync(new ExternalIdLink
                             {
                                 AppId = appId,
-                                // IMPORTANT: ensure your ExternalEntityType contains SalesPayment; if not, add it.
                                 EntityType = ExternalEntityType.SalesPayment,
                                 SageId = null,
                                 SageUrn = sageUrn,
@@ -173,14 +169,9 @@ namespace Sage200Microservice.API.Controllers
         }
 
         /// <summary>
-        /// Refreshes allocation values for candidate SalesInvoices and returns a paged result of updates.
-        /// Spec §6.5.2: For each candidate invoice (not fully allocated), query Sage for allocation state,
-        /// update local fields, and return the updated page. Tenant-scoped by AppId from X-Api-Key.
+        /// Refresh allocation values for candidate SalesInvoices and return a paged result of updates.
+        /// Tenant-scoped by AppId resolved from X-Api-Key.
         /// </summary>
-        /// <param name="pageNumber">1-based page number (default 1).</param>
-        /// <param name="pageSize">Requested page size (max 200, default 50).</param>
-        /// <param name="ct">Cancellation token.</param>
-        /// <returns>PagedResult of <see cref="PaymentsAllocationCheckDto"/>.</returns>
         [HttpGet("allocations/check")]
         [SageRoutingHeaders(DocumentApiKey = true)]
         public async Task<ActionResult<PagedResult<PaymentsAllocationCheckDto>>> CheckAllocationsAsync(
@@ -196,7 +187,7 @@ namespace Sage200Microservice.API.Controllers
             if (pageSize < 1) pageSize = 50;
             if (pageSize > MaxPageSize) pageSize = MaxPageSize;
 
-            // Resolve AppId (same pattern as export-jobs)
+            // Resolve AppId
             var apiKey = Request.Headers["X-Api-Key"].ToString();
             if (string.IsNullOrWhiteSpace(apiKey))
             {
@@ -207,8 +198,8 @@ namespace Sage200Microservice.API.Controllers
                 });
             }
 
-            var keyRow = await _apiKeys.GetByKeyAsync(apiKey) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey);
-            var valid = await _apiKeys.IsValidKeyAsync(apiKey);
+            var keyRow = await _apiKeys.GetByKeyAsync(apiKey, ct) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey, ct);
+            var valid = await _apiKeys.IsValidKeyAsync(apiKey, ct);
             if (keyRow == null || !valid)
             {
                 return StatusCode(StatusCodes.Status401Unauthorized, new ProblemDetails
@@ -217,7 +208,7 @@ namespace Sage200Microservice.API.Controllers
                     Detail = "API key could not be resolved to a valid AppId."
                 });
             }
-            await _apiKeys.UpdateLastUsedAsync(apiKey);
+            await _apiKeys.UpdateLastUsedAsync(apiKey, ct);
             var appId = keyRow.Id;
 
             // Candidate query (tracked entities; we will update them)
@@ -244,7 +235,8 @@ namespace Sage200Microservice.API.Controllers
 
             foreach (var link in candidates)
             {
-                // Default result shell for this row
+                ct.ThrowIfCancellationRequested();
+
                 var row = new PaymentsAllocationCheckDto
                 {
                     AppId = link.AppId,
@@ -269,13 +261,11 @@ namespace Sage200Microservice.API.Controllers
                 var (alloc, outst, fully, status) = await _allocations.RefreshAllocationAsync(link.SageUrn, ct);
                 if (status != null)
                 {
-                    // Sage error — continue, do not fail whole page
                     row.StatusMessage = status;
                     failures++;
                 }
                 else
                 {
-                    // Compare & update values
                     var changed = (link.AllocatedValue != alloc) || (link.OutstandingValue != outst) || (link.IsFullyAllocated != fully);
 
                     link.AllocatedValue = alloc;
@@ -289,7 +279,6 @@ namespace Sage200Microservice.API.Controllers
                         updated++;
                     }
 
-                    // Project refreshed values back to DTO
                     row.AllocatedValue = link.AllocatedValue;
                     row.OutstandingValue = link.OutstandingValue;
                     row.LastAllocationCheckUtc = link.LastAllocationCheckUtc;
@@ -299,7 +288,7 @@ namespace Sage200Microservice.API.Controllers
                 results.Add(row);
             }
 
-            // Stage TransactionAttempt and persist everything in one atomic operation
+            // Record a TransactionAttempt and persist changes atomically
             var correlationId =
                 (Request.Headers.TryGetValue("X-Correlation-Id", out var corr) && !string.IsNullOrWhiteSpace(corr))
                     ? corr.ToString()
@@ -315,7 +304,6 @@ namespace Sage200Microservice.API.Controllers
                 ResultMessage = $"checked={results.Count}, changed={updated}, failures={failures}"
             });
 
-            // Commit all DB changes together (ExternalIdLink updates  TransactionAttempt)
             await using (var tx = await _db.Database.BeginTransactionAsync(ct))
             {
                 await _db.SaveChangesAsync(ct);
@@ -324,7 +312,10 @@ namespace Sage200Microservice.API.Controllers
 
             _logger.LogInformation(
                 "AllocationsCheck: appId={AppId}, pageNumber={PageNumber}, pageSize={PageSize}, totalCount={TotalCount}, updated={Updated}, failures={Failures}",
-                appId, pageNumber, pageSize, totalCount, updated, failures);
+                appId, pageNumber, pageSize, await _db.ExternalIdLinks.CountAsync(x =>
+                    x.EntityType == ExternalEntityType.SalesInvoice &&
+                    (x.IsFullyAllocated == false || x.IsFullyAllocated == null) &&
+                    x.AppId == appId, ct), updated, failures);
 
             var page = new PagedResult<PaymentsAllocationCheckDto>(results, totalCount, pageNumber, pageSize);
             return Ok(page);
@@ -332,30 +323,23 @@ namespace Sage200Microservice.API.Controllers
 
         /// <summary>
         /// Returns a paginated list of SalesInvoice allocation candidates for the Airflow export job.
-        /// Spec §6.3.1. Candidates are scoped by the caller’s AppId (resolved from X-Api-Key),
-        /// and filtered to invoices that are not fully allocated:
-        ///   WHERE EntityType == ExternalEntityType.SalesInvoice
-        ///     AND (IsFullyAllocated == false OR IsFullyAllocated IS NULL)
-        ///     AND AppId == {resolved AppId}
-        /// Sorted by LastAllocationCheckUtc (NULLS FIRST) then Id ascending for stable pagination.
         /// </summary>
-        /// <param name="pageNumber">1-based page number (default 1).</param>
-        /// <param name="pageSize">Requested page size (max 200, default 50).</param>
-        /// <returns>PagedResult of <see cref="PaymentsExportJobDto"/>.</returns>
         [HttpGet("export-jobs")]
         [SageRoutingHeaders(DocumentApiKey = true)]
         public async Task<ActionResult<PagedResult<PaymentsExportJobDto>>> GetPaymentsExportJobsAsync(
             [FromQuery] int pageNumber = 1,
-            [FromQuery] int pageSize = 50)
+            [FromQuery] int pageSize = 50,
+            CancellationToken ct = default)
         {
-            using var _ = _apiMetrics.TrackApiRequest("GET", "/api/SalesPayments/export-jobs");
-            // Clamp paging as per confirmation.
+            using var _ = _apiMetrics?.TrackApiRequest("GET", "/api/SalesPayments/export-jobs");
+
+            // Clamp paging.
             const int MaxPageSize = 200;
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1) pageSize = 50;
             if (pageSize > MaxPageSize) pageSize = MaxPageSize;
 
-            // Resolve AppId using the current repository pattern (per SalesInvoicesController).
+            // Resolve AppId
             var apiKey = Request.Headers["X-Api-Key"].ToString();
             if (string.IsNullOrWhiteSpace(apiKey))
             {
@@ -366,8 +350,8 @@ namespace Sage200Microservice.API.Controllers
                 });
             }
 
-            var keyRow = await _apiKeys.GetByKeyAsync(apiKey) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey);
-            var valid = await _apiKeys.IsValidKeyAsync(apiKey);
+            var keyRow = await _apiKeys.GetByKeyAsync(apiKey, ct) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey, ct);
+            var valid = await _apiKeys.IsValidKeyAsync(apiKey, ct);
             if (keyRow == null || !valid)
             {
                 return StatusCode(StatusCodes.Status401Unauthorized, new ProblemDetails
@@ -376,20 +360,19 @@ namespace Sage200Microservice.API.Controllers
                     Detail = "API key could not be resolved to a valid AppId."
                 });
             }
-            await _apiKeys.UpdateLastUsedAsync(apiKey);
+            await _apiKeys.UpdateLastUsedAsync(apiKey, ct);
             var appId = keyRow.Id;
 
-            // Base candidate query with tenant scoping and allocation filter (Spec §6.5.1 / §8.5).
+            // Base candidate query
             var baseQuery = _db.ExternalIdLinks
                 .AsNoTracking()
                 .Where(x =>
                     x.EntityType == ExternalEntityType.SalesInvoice &&
-                    (x.IsFullyAllocated == false) &&
+                    x.IsFullyAllocated == false &&
                     x.AppId == appId);
 
-            var totalCount = await baseQuery.CountAsync();
+            var totalCount = await baseQuery.CountAsync(ct);
 
-            // NULLS FIRST then Id ASC for stable paging.
             var items = await baseQuery
                 .OrderBy(x => x.LastAllocationCheckUtc == null)  // NULLs first
                 .ThenBy(x => x.LastAllocationCheckUtc)
@@ -406,7 +389,7 @@ namespace Sage200Microservice.API.Controllers
                     LastAllocationCheckUtc = x.LastAllocationCheckUtc,
                     LastAllocationChangeUtc = x.LastAllocationChangeUtc
                 })
-                .ToListAsync();
+                .ToListAsync(ct);
 
             _logger.LogInformation(
                 "PaymentsExportJobs: appId={AppId}, pageNumber={PageNumber}, pageSize={PageSize}, totalCount={TotalCount}, returned={Returned}",

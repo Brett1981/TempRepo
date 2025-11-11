@@ -1,34 +1,37 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Sage200Microservice.API.Controllers.Infrastructure; // SageRouteControllerBase
 using Sage200Microservice.Data.Repositories;
-using Sage200Microservice.Services.Interfaces;
+using Sage200Microservice.Services.Interfaces;            // IBatchProcessingService
+using Sage200Microservice.Services;                      // ISageApiClient
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Sage200Microservice.API.Controllers
 {
     /// <summary>
-    /// Controller for batch operations
+    /// Controller for batch operations.
+    /// Ensures Sage routing (X-Site / X-Company) is present before invoking services that call Sage.
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public class BatchController : ControllerBase
+    public class BatchController : SageRouteControllerBase
     {
         private readonly IBatchProcessingService _batchProcessingService;
         private readonly IInvoiceRepository _invoiceRepository;
         private readonly IApiLogRepository _apiLogRepository;
         private readonly ILogger<BatchController> _logger;
 
-        /// <summary>
-        /// Initializes a new instance of the BatchController
-        /// </summary>
-        /// <param name="batchProcessingService"> The batch processing service </param>
-        /// <param name="invoiceRepository">      The invoice repository </param>
-        /// <param name="apiLogRepository">       The API log repository </param>
-        /// <param name="logger">                 The logger </param>
         public BatchController(
+            ISageApiClient sage,                                // <-- required by base
+            ILogger<BatchController> logger,
             IBatchProcessingService batchProcessingService,
             IInvoiceRepository invoiceRepository,
-            IApiLogRepository apiLogRepository,
-            ILogger<BatchController> logger)
+            IApiLogRepository apiLogRepository)
+            : base(sage, logger)                                // <-- IMPORTANT
         {
             _batchProcessingService = batchProcessingService;
             _invoiceRepository = invoiceRepository;
@@ -37,20 +40,23 @@ namespace Sage200Microservice.API.Controllers
         }
 
         /// <summary>
-        /// Processes a batch of invoices
+        /// Processes a batch of invoices.
         /// </summary>
-        /// <param name="request"> The batch processing request </param>
-        /// <returns> The result of the batch processing operation </returns>
-        /// <response code="200"> Returns the batch processing result </response>
-        /// <response code="400"> If the request is invalid </response>
-        /// <response code="500"> If there was an internal server error </response>
         [HttpPost("process-invoices")]
         [Consumes("application/json")]
         [ProducesResponseType(typeof(BatchProcessingResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BatchProcessingResponse), StatusCodes.Status400BadRequest)]
         [ProducesResponseType(typeof(BatchProcessingResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<BatchProcessingResponse>> ProcessInvoiceBatch([FromBody] BatchProcessingRequest request)
+        public async Task<ActionResult<BatchProcessingResponse>> ProcessInvoiceBatch(
+            [FromBody] BatchProcessingRequest request,
+            CancellationToken ct)
         {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromMinutes(5)); // sensible cap for batch ops
+
+            // Ensure X-Site/X-Company are available for any downstream Sage calls:
+            await EnsureRoutingAsync(cts.Token);
+
             // Log the API call
             var apiLog = new Sage200Microservice.Data.Models.ApiLog
             {
@@ -58,7 +64,7 @@ namespace Sage200Microservice.API.Controllers
                 RequestMethod = "POST",
                 RequestPayload = $"InvoiceReferences: {request.InvoiceReferences?.Count}, BatchSize: {request.BatchSize}, ParallelProcessing: {request.ParallelProcessing}",
                 Timestamp = DateTime.UtcNow,
-                CallerId = Request.Headers["caller-id"].FirstOrDefault() ?? "Unknown",
+                CallerId = HttpContext.Request.Headers["caller-id"].FirstOrDefault() ?? "Unknown",
                 ApiType = "REST"
             };
 
@@ -78,11 +84,13 @@ namespace Sage200Microservice.API.Controllers
                     });
                 }
 
-                // Process the batch
+                // Process the batch (propagate token)
                 var result = await _batchProcessingService.ProcessInvoiceBatchAsync(
                     request.InvoiceReferences,
                     request.BatchSize,
-                    request.ParallelProcessing);
+                    request.ParallelProcessing,
+                    5,
+                    cts.Token);
 
                 // Update API log with response
                 apiLog.ResponsePayload = $"Success: {result.Success}, Message: {result.Message}, SuccessCount: {result.SuccessCount}, FailureCount: {result.FailureCount}";
@@ -110,6 +118,15 @@ namespace Sage200Microservice.API.Controllers
                 };
 
                 return Ok(response);
+            }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning("Batch processing cancelled due to timeout.");
+                return StatusCode(504, new BatchProcessingResponse
+                {
+                    Success = false,
+                    Message = "Batch processing timed out."
+                });
             }
             catch (Exception ex)
             {
@@ -129,18 +146,22 @@ namespace Sage200Microservice.API.Controllers
         }
 
         /// <summary>
-        /// Processes all outstanding invoices
+        /// Processes all outstanding invoices.
         /// </summary>
-        /// <param name="request"> The batch processing options </param>
-        /// <returns> The result of the batch processing operation </returns>
-        /// <response code="200"> Returns the batch processing result </response>
-        /// <response code="500"> If there was an internal server error </response>
         [HttpPost("process-outstanding-invoices")]
         [Consumes("application/json")]
         [ProducesResponseType(typeof(BatchProcessingResponse), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(BatchProcessingResponse), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<BatchProcessingResponse>> ProcessOutstandingInvoices([FromBody] BatchProcessingOptions request)
+        public async Task<ActionResult<BatchProcessingResponse>> ProcessOutstandingInvoices(
+            [FromBody] BatchProcessingOptions request,
+            CancellationToken ct)
         {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromMinutes(10));
+
+            // Ensure routing for any downstream Sage calls:
+            await EnsureRoutingAsync(cts.Token);
+
             // Log the API call
             var apiLog = new Sage200Microservice.Data.Models.ApiLog
             {
@@ -148,23 +169,25 @@ namespace Sage200Microservice.API.Controllers
                 RequestMethod = "POST",
                 RequestPayload = $"BatchSize: {request.BatchSize}, ParallelProcessing: {request.ParallelProcessing}",
                 Timestamp = DateTime.UtcNow,
-                CallerId = Request.Headers["caller-id"].FirstOrDefault() ?? "Unknown",
+                CallerId = HttpContext.Request.Headers["caller-id"].FirstOrDefault() ?? "Unknown",
                 ApiType = "REST"
             };
 
             try
             {
                 // Get all outstanding invoices
-                var outstandingInvoices = await _invoiceRepository.GetOutstandingInvoicesAsync();
+                var outstandingInvoices = await _invoiceRepository.GetOutstandingInvoicesAsync(cts.Token);
                 var invoiceReferences = outstandingInvoices.Select(i => i.InvoiceReference).ToList();
 
                 _logger.LogInformation("Found {Count} outstanding invoices to process", invoiceReferences.Count);
 
-                // Process the batch
+                // Process the batch (propagate token)
                 var result = await _batchProcessingService.ProcessInvoiceBatchAsync(
                     invoiceReferences,
                     request.BatchSize,
-                    request.ParallelProcessing);
+                    request.ParallelProcessing,
+                    5,
+                    cts.Token);
 
                 // Update API log with response
                 apiLog.ResponsePayload = $"Success: {result.Success}, Message: {result.Message}, SuccessCount: {result.SuccessCount}, FailureCount: {result.FailureCount}";
@@ -193,6 +216,15 @@ namespace Sage200Microservice.API.Controllers
 
                 return Ok(response);
             }
+            catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+            {
+                _logger.LogWarning("Outstanding-invoices batch cancelled due to timeout.");
+                return StatusCode(504, new BatchProcessingResponse
+                {
+                    Success = false,
+                    Message = "Operation timed out."
+                });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing outstanding invoices");
@@ -211,10 +243,14 @@ namespace Sage200Microservice.API.Controllers
         }
     }
 
-    /// <summary>
-    /// Request model for batch processing
-    /// </summary>
-    public class BatchProcessingRequest : BatchProcessingOptions
+    // Request/response models unchanged...
+}
+
+
+/// <summary>
+/// Request model for batch processing
+/// </summary>
+public class BatchProcessingRequest : BatchProcessingOptions
     {
         /// <summary>
         /// The list of invoice references to process
@@ -322,4 +358,3 @@ namespace Sage200Microservice.API.Controllers
         /// </summary>
         public string ErrorDetails { get; set; }
     }
-}
