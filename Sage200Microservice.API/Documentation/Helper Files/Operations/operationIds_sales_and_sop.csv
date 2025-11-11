@@ -1,0 +1,253 @@
+file,path,method,operationId,summary,tags
+sales,/customer_alerts,GET,GetCustomerAlerts,Customer Alert,Customer Alerts
+sales,/customer_alerts,POST,PostCustomerAlert,Customer Alert,Customer Alerts
+sales,/customer_alerts/{Id},DELETE,DeleteCustomerAlert,Customer Alert,Customer Alerts
+sales,/customer_alerts/{Id},GET,GetCustomerAlert,Customer Alert,Customer Alerts
+sales,/customer_alerts/{Id},PUT,PutCustomerAlert,Customer Alert,Customer Alerts
+sales,/customers/{customerId}/customer_alerts,GET,GetCustomerAlertsForCustomer,Customer Alerts For Customer,Customer Alerts
+sales,/customer_cards,GET,GetCustomerCards,Customer Cards,Customer Cards
+sales,/customer_cards/{Id},DELETE,DeleteCustomerCard,Customer Card,Customer Cards
+sales,/customer_cards/{Id},GET,GetCustomerCard,Customer Card,Customer Cards
+sales,/customer_cards/{Id},PUT,PutCustomerCard,Customer Card,Customer Cards
+sales,/customers/{customerId}/customer_cards,GET,GetCustomerCardsForCustomer,Customer Cards For Customer,Customer Cards
+sales,/customer_contact_roles,GET,GetCustomerContactRoles,Customer Contact Roles,Customer Contact Roles
+sales,/customer_contact_roles/{Id},GET,GetCustomerContactRole,Customer Contact Role,Customer Contact Roles
+sales,/customer_contacts/{CustomerContactId}/customer_contact_roles,GET,GetCustomerContactRolesForCustomerContact,Customer Contact Roles By Contact,Customer Contact Roles
+sales,/customer_contacts,GET,GetCustomerContact,Customer Contacts,Customer Contacts
+sales,/customer_contacts/{Id},DELETE,DeleteCustomerContact,Customer Contact,Customer Contacts
+sales,/customer_contacts/{Id},GET,GetCustomerContacts,Customer Contact,Customer Contacts
+sales,/customer_contacts/{Id},PUT,PutCustomerContact,Customer Contact,Customer Contacts
+sales,/customers/{customerId}/customer_contacts,GET,GetCustomerContactsForCustomer,Customer Contacts For Customer,Customer Contacts
+sales,/customers/{customerId}/customer_contacts,POST,PostCustomerContactForCustomer,Customer Contacts For Customer,Customer Contacts
+sales,/customers/{customerId}/customer_contacts/{Id},DELETE,DeleteCustomerContactForCustomer,Customer Contact For Customer,Customer Contacts
+sales,/customers/{customerId}/customer_contacts/{Id},GET,GetCustomerContactForCustomer,Customer Contact For Customer,Customer Contacts
+sales,/customers/{customerId}/customer_contacts/{Id},PUT,PutCustomerContactForCustomer,Customer Contact For Customer,Customer Contacts
+sales,/customer_delivery_addresses,GET,GetCustomerDeliveryAddresses,Customer Delivery Addresses Collection,Customer Delivery Addresses
+sales,/customer_delivery_addresses,POST,PostCustomerDeliveryAddress,Customer Delivery Addresses Collection,Customer Delivery Addresses
+sales,/customer_delivery_addresses/{Id},DELETE,DeleteCustomerDeliveryAddress,Single Customer Delivery Address Resource,Customer Delivery Addresses
+sales,/customer_delivery_addresses/{Id},GET,GetCustomerDeliveryAddress,Single Customer Delivery Address Resource,Customer Delivery Addresses
+sales,/customer_delivery_addresses/{Id},PUT,PutCustomerDeliveryAddress,Single Customer Delivery Address Resource,Customer Delivery Addresses
+sales,/customers/{customerId}/customer_delivery_addresses,GET,GetCustomerDeliveryAddressesForCustomer,Customer Delivery Addresses For Customer,Customer Delivery Addresses
+sales,/customer_contacts/{CustomerContactId}/customer_emails,GET,GetCustomerEmailsForCustomerContact,Customer Emails By Contact,Customer Emails
+sales,/customer_contacts/{CustomerContactId}/customer_emails,POST,PostCustomerEmailForCustomerContact,Customer Emails By Contact,Customer Emails
+sales,/customer_contacts/{CustomerContactId}/customer_emails/{Id},DELETE,DeleteCustomerEmailForCustomerContact,Customer Email For Customer Contact,Customer Emails
+sales,/customer_contacts/{CustomerContactId}/customer_emails/{Id},GET,GetCustomerEmailForCustomerContact,Customer Email For Customer Contact,Customer Emails
+sales,/customer_contacts/{CustomerContactId}/customer_emails/{Id},PUT,PutCustomerEmailForCustomerContact,Customer Email For Customer Contact,Customer Emails
+sales,/customer_emails,GET,GetCustomerEmails,Customer Emails,Customer Emails
+sales,/customer_emails/{Id},DELETE,DeleteCustomerEmail,Customer Email,Customer Emails
+sales,/customer_emails/{Id},GET,GetCustomerEmail,Customer Email,Customer Emails
+sales,/customer_emails/{Id},PUT,PutCustomerEmail,Customer Email,Customer Emails
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_emails,GET,GetCustomerEmailsForCustomerAndCustomerContact,Customer Emails For Customer And Customer Contact,Customer Emails
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_emails,POST,PostCustomerEmailForCustomerAndCustomerContact,Customer Emails For Customer And Customer Contact,Customer Emails
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_emails/{Id},DELETE,DeleteCustomerEmailForCustomerAndCustomerContact,Customer Email For Customer And Customer Contact,Customer Emails
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_emails/{Id},GET,GetCustomerEmailForCustomerAndCustomerContact,Customer Email For Customer And Customer Contact,Customer Emails
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_emails/{Id},PUT,PutCustomerEmailForCustomerAndCustomerContact,Customer Email For Customer And Customer Contact,Customer Emails
+sales,/customer_contacts/{CustomerContactId}/customer_faxes,GET,GetCustomerFaxesForCustomerContact,Customer Faxes By Contact,Customer Faxes
+sales,/customer_contacts/{CustomerContactId}/customer_faxes,POST,PostCustomerFaxForCustomerContact,Customer Faxes By Contact,Customer Faxes
+sales,/customer_contacts/{CustomerContactId}/customer_faxes/{Id},DELETE,DeleteCustomerFaxForCustomerContact,Customer Fax For Customer Contact,Customer Faxes
+sales,/customer_contacts/{CustomerContactId}/customer_faxes/{Id},GET,GetCustomerFaxForCustomerContact,Customer Fax For Customer Contact,Customer Faxes
+sales,/customer_contacts/{CustomerContactId}/customer_faxes/{Id},PUT,PutCustomerFaxForCustomerContact,Customer Fax For Customer Contact,Customer Faxes
+sales,/customer_faxes,GET,GetCustomerFaxes,Customer Faxes,Customer Faxes
+sales,/customer_faxes/{Id},DELETE,DeleteCustomerFax,Customer Fax,Customer Faxes
+sales,/customer_faxes/{Id},GET,GetCustomerFax,Customer Fax,Customer Faxes
+sales,/customer_faxes/{Id},PUT,PutCustomerFax,Customer Fax,Customer Faxes
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_faxes,GET,GetCustomerFaxesForCustomerAndCustomerContact,Customer Faxes For Customer And Customer Contact,Customer Faxes
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_faxes,POST,PostCustomerFaxForCustomerAndCustomerContact,Customer Faxes For Customer And Customer Contact,Customer Faxes
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_faxes/{Id},DELETE,DeleteCustomerFaxForCustomerAndCustomerContact,Customer Fax For Customer And Customer Contact,Customer Faxes
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_faxes/{Id},GET,GetCustomerFaxForCustomerAndCustomerContact,Customer Fax For Customer And Customer Contact,Customer Faxes
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_faxes/{Id},PUT,PutCustomerFaxForCustomerAndCustomerContact,Customer Fax For Customer And Customer Contact,Customer Faxes
+sales,/customer_memos,GET,GetCustomerMemos,Customer Memos,Customer Memos
+sales,/customer_memos,POST,PostCustomerMemo,Customer Memos,Customer Memos
+sales,/customer_memos/{Id},DELETE,DeleteCustomerMemo,Customer Memo,Customer Memos
+sales,/customer_memos/{Id},GET,GetCustomerMemo,Customer Memo,Customer Memos
+sales,/customer_memos/{Id},PUT,PutCustomerMemo,Customer Memo,Customer Memos
+sales,/customers/{customerId}/customer_memos,GET,GetCustomerMemosForCustomer,Customer Memos For Customer,Customer Memos
+sales,/customer_contacts/{CustomerContactId}/customer_mobiles,GET,GetCustomerMobilesForCustomerContact,Customer Mobiles By Contact,Customer Mobiles
+sales,/customer_contacts/{CustomerContactId}/customer_mobiles,POST,PostCustomerMobileForCustomerContact,Customer Mobiles By Contact,Customer Mobiles
+sales,/customer_contacts/{CustomerContactId}/customer_mobiles/{Id},DELETE,DeleteCustomerMobileForCustomerContact,Customer Mobile For Customer Contact,Customer Mobiles
+sales,/customer_contacts/{CustomerContactId}/customer_mobiles/{Id},GET,GetCustomerMobileForCustomerContact,Customer Mobile For Customer Contact,Customer Mobiles
+sales,/customer_contacts/{CustomerContactId}/customer_mobiles/{Id},PUT,PutCustomerMobileForCustomerContact,Customer Mobile For Customer Contact,Customer Mobiles
+sales,/customer_mobiles,GET,GetCustomerMobiles,Customer Mobiles,Customer Mobiles
+sales,/customer_mobiles/{Id},DELETE,DeleteCustomerMobile,Customer Mobile,Customer Mobiles
+sales,/customer_mobiles/{Id},GET,GetCustomerMobile,Customer Mobile,Customer Mobiles
+sales,/customer_mobiles/{Id},PUT,PutCustomerMobile,Customer Mobile,Customer Mobiles
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_mobiles,GET,GetCustomerMobilesForCustomerAndCustomerContact,Customer Mobiles For Customer And Customer Contact,Customer Mobiles
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_mobiles,POST,PostCustomerMobileForCustomerAndCustomerContact,Customer Mobiles For Customer And Customer Contact,Customer Mobiles
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_mobiles/{Id},DELETE,DeleteCustomerMobileForCustomerAndCustomerContact,Customer Mobile For Customer And Customer Contact,Customer Mobiles
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_mobiles/{Id},GET,GetCustomerMobileForCustomerAndCustomerContact,Customer Mobile For Customer And Customer Contact,Customer Mobiles
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_mobiles/{Id},PUT,PutCustomerMobileForCustomerAndCustomerContact,Customer Mobile For Customer And Customer Contact,Customer Mobiles
+sales,/customer_period_value_views,GET,GetCustomerPeriodValueViews,Customer Period Value Views,Customer Period Value Views
+sales,/customer_price_bands,GET,GetCustomerPriceBands,Customer Price Bands,Customer Price Bands
+sales,/customer_price_bands/{Id},GET,GetCustomerPriceBand,Customer Price Band,Customer Price Bands
+sales,/customer_price_enquiry,POST,PostCustomerPriceEnquiry,Customer Price Enquiry,Customer Price Enquiry
+sales,/customer_sop_invoice_credit_line_views,GET,GetCustomerSOPInvoiceCreditLineViews,Customer SOP Invoice Credit Line Views,Customer SOP Invoice Credit Line Views
+sales,/customer_contacts/{CustomerContactId}/customer_telephones,GET,GetCustomerTelephonesForCustomerContact,Customer Telephones By Contact,Customer Telephones
+sales,/customer_contacts/{CustomerContactId}/customer_telephones,POST,PostCustomerTelephoneForCustomerContact,Customer Telephones By Contact,Customer Telephones
+sales,/customer_contacts/{CustomerContactId}/customer_telephones/{Id},DELETE,DeleteCustomerTelephoneForCustomerContact,Customer Telephone For Customer Contact,Customer Telephones
+sales,/customer_contacts/{CustomerContactId}/customer_telephones/{Id},GET,GetCustomerTelephoneForCustomerContact,Customer Telephone For Customer Contact,Customer Telephones
+sales,/customer_contacts/{CustomerContactId}/customer_telephones/{Id},PUT,PutCustomerTelephoneForCustomerContact,Customer Telephone For Customer Contact,Customer Telephones
+sales,/customer_telephones,GET,GetCustomerTelephones,Customer Telephones,Customer Telephones
+sales,/customer_telephones/{Id},DELETE,DeleteCustomerTelephone,Customer Telephone,Customer Telephones
+sales,/customer_telephones/{Id},GET,GetCustomerTelephone,Customer Telephone,Customer Telephones
+sales,/customer_telephones/{Id},PUT,PutCustomerTelephone,Customer Telephone,Customer Telephones
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_telephones,GET,GetCustomerTelephonesForCustomerAndCustomerContact,Customer Telephones For Customer And Customer Contact,Customer Telephones
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_telephones,POST,PostCustomerTelephoneForCustomerAndCustomerContact,Customer Telephones For Customer And Customer Contact,Customer Telephones
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_telephones/{Id},DELETE,DeleteCustomerTelephoneForCustomerAndCustomerContact,Customer Telephone For Customer And Customer Contact,Customer Telephones
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_telephones/{Id},GET,GetCustomerTelephoneForCustomerAndCustomerContact,Customer Telephone For Customer And Customer Contact,Customer Telephones
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_telephones/{Id},PUT,PutCustomerTelephoneForCustomerAndCustomerContact,Customer Telephone For Customer And Customer Contact,Customer Telephones
+sales,/customer_views,GET,GetCustomerViews,Customer Views,Customer Views
+sales,/customer_contacts/{CustomerContactId}/customer_websites,GET,GetCustomerWebsitesForCustomerContact,Customer Websites By Contact,Customer Websites
+sales,/customer_contacts/{CustomerContactId}/customer_websites,POST,PostCustomerWebsiteForCustomerContact,Customer Websites By Contact,Customer Websites
+sales,/customer_contacts/{CustomerContactId}/customer_websites/{Id},DELETE,DeleteCustomerWebsiteForCustomerContact,Customer Website For Customer Contact,Customer Websites
+sales,/customer_contacts/{CustomerContactId}/customer_websites/{Id},GET,GetCustomerWebsiteForCustomerContact,Customer Website For Customer Contact,Customer Websites
+sales,/customer_contacts/{CustomerContactId}/customer_websites/{Id},PUT,PutCustomerWebsiteForCustomerContact,Customer Website For Customer Contact,Customer Websites
+sales,/customer_websites,GET,GetCustomerWebsites,Customer Websites,Customer Websites
+sales,/customer_websites/{Id},DELETE,DeleteCustomerWebsite,Customer Website,Customer Websites
+sales,/customer_websites/{Id},GET,GetCustomerWebsite,Customer Website,Customer Websites
+sales,/customer_websites/{Id},PUT,PutCustomerWebsite,Customer Website,Customer Websites
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_websites,GET,GetCustomerWebsitesForCustomerAndCustomerContact,Customer Websites For Customer And Customer Contact,Customer Websites
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_websites,POST,PostCustomerWebsiteForCustomerAndCustomerContact,Customer Websites For Customer And Customer Contact,Customer Websites
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_websites/{Id},DELETE,DeleteCustomerWebsiteForCustomerAndCustomerContact,Customer Website For Customer And Customer Contact,Customer Websites
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_websites/{Id},GET,GetCustomerWebsiteForCustomerAndCustomerContact,Customer Website For Customer And Customer Contact,Customer Websites
+sales,/customers/{customerId}/customer_contacts/{CustomerContactId}/customer_websites/{Id},PUT,PutCustomerWebsiteForCustomerAndCustomerContact,Customer Website For Customer And Customer Contact,Customer Websites
+sales,/customer_year_value_views,GET,GetCustomerYearValueViews,Customer Year Value Views,Customer Year Value Views
+sales,/customers,GET,GetCustomers,Customers,Customers
+sales,/customers,POST,PostCustomer,Customers,Customers
+sales,/customers/{Id},DELETE,DeleteCustomer,Customer,Customers
+sales,/customers/{Id},GET,GetCustomer,Customer,Customers
+sales,/customers/{Id},PUT,PutCustomer,Customer,Customers
+sales,/customers_new,POST,PostCustomersNew,New Customer With Defaults,Customers
+sales,/document_transmission_method_types,GET,GetDocumentTransmissionMethodTypes,Document Transmission Method Types,Document Transmission Method Types
+sales,/finance_charges,GET,GetFinanceCharges,Finance Charges,Finance Charges
+sales,/finance_charges/{Id},GET,GetFinanceCharge,Finance Charge,Finance Charges
+sales,/finance_charges/{Id},PUT,PutFinanceCharge,Finance Charge,Finance Charges
+sales,/head_office_types,GET,GetHeadOfficeTypes,Head Office Types,Head Office Types
+sales,/lookup_customers,GET,GetLookupCustomers,Lookup Customers,Lookup Customers
+sales,/sales_aged_debtor_detailed_views,GET,GetSalesAgedDebtorDetailedViews,Sales Aged Debtor Detailed Views,Sales Aged Debtor Detailed Views
+sales,/sales_aged_debtor_summary_views,GET,GetSalesAgedDebtorSummaryViews,Sales Aged Debtor Summary Views,Sales Aged Debtor Summary Views
+sales,/sales_aged_transaction_period_views,GET,GetAgedTransactionPeriodViews,View Of Sales Aged Transaction Periods,Sales Aged Transaction Period Views
+sales,/sales_allocations,POST,PostSalesAllocation,Sales Allocations,Sales Allocations
+sales,/sales_credit_notes,POST,PostSalesCreditNote,Sales Credit Notes,Sales Credit Notes
+sales,/sales_credit_notes_new,POST,PostSalesCreditNotesNew,Sales Credit Notes New,Sales Credit Notes
+sales,/customers/{customerId}/sales_historical_transactions,GET,GetSalesHistoricalTransactionsForCustomer,Sales Historical Transactions For Customer,Sales Historical Transactions
+sales,/sales_historical_transactions,GET,GetSalesHistoricalTransactions,Sales Historical Transactions,Sales Historical Transactions
+sales,/sales_historical_transactions/{Id},GET,GetSalesHistoricalTransaction,Sales Historical Transaction,Sales Historical Transactions
+sales,/sales_invoices,POST,PostSalesInvoice,Sales Invoices,Sales Invoices
+sales,/sales_invoices_new,POST,PostSalesInvoicesNew,Sales Invoices New,Sales Invoices
+sales,/sales_ledger_settings,GET,GetSalesLedgerSettings,Sales Ledger Settings,Sales Ledger Settings
+sales,/sales_ledger_settings/{Id},GET,GetSalesLedgerSetting,Sales Ledger Setting,Sales Ledger Settings
+sales,/sales_ledger_settings/{Id},PUT,PutSalesLedgerSetting,Sales Ledger Setting,Sales Ledger Settings
+sales,/sales_payments,POST,PostSalesPayment,Sales Payments,Sales Payments
+sales,/sales_posted_transaction_memos,GET,GetSalesPostedTransactionMemos,Sales Posted Transaction Memos,Sales Posted Transaction Memos
+sales,/sales_posted_transaction_memos,POST,PostSalesPostedTransactionMemo,Sales Posted Transaction Memos,Sales Posted Transaction Memos
+sales,/sales_posted_transaction_memos/{Id},DELETE,DeleteSalesPostedTransactionMemo,Sales Posted Transaction Memo,Sales Posted Transaction Memos
+sales,/sales_posted_transaction_memos/{Id},GET,GetSalesPostedTransactionMemo,Sales Posted Transaction Memo,Sales Posted Transaction Memos
+sales,/sales_posted_transaction_memos/{Id},PUT,PutSalesPostedTransactionMemo,Sales Posted Transaction Memo,Sales Posted Transaction Memos
+sales,/sales_posted_transactions/{transactionId}/sales_posted_transaction_memos,GET,GetMemosForSalesPostedTransaction,Sales Posted Transaction Memos For Sales Posted Transaction,Sales Posted Transaction Memos
+sales,/customers/{customerId}/sales_posted_transactions,GET,GetSalesPostedTransactionsForCustomer,Sales Posted Transactions For Customer,Sales Posted Transactions
+sales,/sales_posted_transactions,GET,GetSalesPostedTransactions,Sales Posted Transactions,Sales Posted Transactions
+sales,/sales_posted_transactions/{Id},GET,GetSalesPostedTransaction,Sales Posted Transaction,Sales Posted Transactions
+sales,/sales_posted_transactions/{Id},PUT,PutSalesPostedTransactions,Sales Posted Transaction,Sales Posted Transactions
+sales,/sales_receipts,POST,PostSalesReceipt,Sales Receipts,Sales Receipts
+sales,/sales_trading_periods,GET,GetSalesTradingPeriods,Sales Trading Periods,Sales Trading Periods
+sales,/sales_trading_periods/{Id},GET,GetSalesTradingPeriod,Sales Trading Period,Sales Trading Periods
+sales,/customers/{customerId}/sales_transaction_enquiry_views,GET,GetSalesTransactionsEnquiryViewsForCustomer,Sales Transaction Enquiry Views Transactions For Customer,Sales Transaction Enquiry Views
+sales,/sales_transaction_enquiry_views,GET,GetSalesTransactionEnquiryViews,Sales Transaction Enquiry Views,Sales Transaction Enquiry Views
+sales,/sales_transaction_enquiry_views/{Id},GET,GetSalesTransactionEnquiryView,Sales Transaction Enquiry View,Sales Transaction Enquiry Views
+sales,/sales_transaction_views,GET,GetSalesTransactionViews,Sales Transaction Views,Sales Transaction Views
+sales,/statement_ageing_terms,GET,GetStatementAgeingTerms,Statement Ageing Terms,Statement Ageing Terms
+sales,/statement_layout_types,GET,GetStatementLayoutTypes,Statement Layout Types,Statement Layout Types
+sales,/statement_terms,GET,GetStatementTerms,Statement Terms,Statement Terms
+sop,/current_user_sop_user_permissions,GET,GetCurrentUserSOPUserPermission,Current User Invoice And Order User Permissions,Current User SOP User Permissions
+sop,/lookup_sop_orders,GET,GetLookupSOPOrders,Lookup Sales Orders,Lookup SOP Orders
+sop,/lookup_sop_quotes,GET,GetLookupSOPQuotes,Lookup Sales Quotes,Lookup SOP Quotes
+sop,/lookup_sop_returns,GET,GetLookupSOPReturns,Lookup Sales Returns,Lookup SOP Returns
+sop,/order_line_item_types,GET,GetOrderLineItemTypes,Order Line Item Types,Order Line Item Types
+sop,/sop_additional_charges,GET,GetSOPAdditionalCharges,SOP Additional Charges,SOP Additional Charges
+sop,/sop_additional_charges/{Id},GET,GetSOPAdditionalCharge,SOP Additional Charge,SOP Additional Charges
+sop,/sop_allocation_line_views,GET,GetSOPAllocationLineViews,Sales Allocation Line Views,SOP Allocation Line Views
+sop,/sop_back_to_back_status_types,GET,GetSOPBackToBackStatusTypes,SOP Back To Back Status Types,SOP Back To Back Status Types
+sop,/sop_cancelled_lines,GET,GetSOPCancelledLines,Cancelled Lines For Sales Orders And Returns,SOP Cancelled Lines
+sop,/sop_cancelled_lines/{Id},GET,GetSOPCancelledLine,Cancelled Line For Sales Orders And Returns,SOP Cancelled Lines
+sop,/sop_confirm_despatch,GET,GetSOPConfirmDespatch,Sales Order Lines Available For Despatch,SOP Confirm Despatch
+sop,/sop_confirm_despatch,POST,PostSOPConfirmDespatch,Sales Order Lines Available For Despatch,SOP Confirm Despatch
+sop,/sop_confirm_despatch_bin_items,POST,PostSOPConfirmDespatchBinItems,Sales Order Bin Items Available For Despatch,SOP Confirm Despatch Bin Items
+sop,/sop_confirm_despatch_traceable_items,POST,PostSOPConfirmDespatchTraceableItems,Sales Order Traceable Lines Available For Despatch,SOP Confirm Despatch Traceable Items
+sop,/sop_confirmation_intent_types,GET,GetSOPConfirmationIntentTypes,Sales Order Confirmation Intent Types,SOP Confirmation Intent Types
+sop,/sop_customer_types,GET,GetSOPCustomerTypes,SOP Customer Types,SOP Customer Types
+sop,/sop_despatch_discrete_orders,GET,GetSOPDespatchDiscreteOrders,SOP Despatch Discrete Orders,SOP Despatch Discrete Orders
+sop,/sop_despatch_receipts,GET,GetSOPDespatchReceipts,SOP Despatch Receipts,SOP Despatch Receipts
+sop,/sop_despatch_receipts/{Id},GET,GetSOPDespatchReceipt,SOP Despatch Receipt,SOP Despatch Receipts
+sop,/sop_despatch_receipts/{Id},PUT,PutSOPDespatchReceipt,SOP Despatch Receipt,SOP Despatch Receipts
+sop,/sop_document_print_status_types,GET,GetSOPDocumentPrintStatusTypes,SOP Document Print Status Types,SOP Document Print Status Types
+sop,/sop_document_process_status_types,GET,GetSOPDocumentProcessStatusTypes,SOP Document Process Status Types,SOP Document Process Status Types
+sop,/sop_document_status_types,GET,GetSOPDocumentStatusTypes,SOP Document Status Types,SOP Document Status Types
+sop,/sop_document_types,GET,GetSOPDocumentTypes,Sales Document Types,SOP Document Types
+sop,/sop_export_reasons,GET,GetSOPExportReasons,SOP Reasons For Export,SOP Export Reasons
+sop,/sop_export_reasons,POST,PostSOPExportReasons,SOP Reasons For Export,SOP Export Reasons
+sop,/sop_export_reasons,PUT,PutSOPExportReasons,SOP Reasons For Export,SOP Export Reasons
+sop,/sop_export_reasons/{Id},DELETE,DeleteSOPExportReason,SOP Reason For Export,SOP Export Reasons
+sop,/sop_export_reasons/{Id},GET,GetSOPExportReason,SOP Reason For Export,SOP Export Reasons
+sop,/sop_export_reasons/{Id},PUT,PutSOPExportReason,SOP Reason For Export,SOP Export Reasons
+sop,/sop_incoterms,GET,GetSOPIncoterms,SOP Incoterms,SOP Incoterms
+sop,/sop_incoterms,POST,PostSOPIncoterms,SOP Incoterms,SOP Incoterms
+sop,/sop_incoterms,PUT,PutSOPIncoterms,SOP Incoterms,SOP Incoterms
+sop,/sop_incoterms/{Id},DELETE,DeleteSOPIncoterm,SOP Incoterm,SOP Incoterms
+sop,/sop_incoterms/{Id},GET,GetSOPIncoterm,SOP Incoterm,SOP Incoterms
+sop,/sop_incoterms/{Id},PUT,PutSOPIncoterm,SOP Incoterm,SOP Incoterms
+sop,/sop_intrastat_status_types,GET,GetSOPIntrastatStatusTypes,SOP Intrastat Status Types,SOP Intrastat Status Types
+sop,/sop_invoice_credit_types,GET,GetSOPInvoiceCreditTypes,SOP Invoice Credit Types,SOP Invoice Credit Types
+sop,/sop_order_despatch_line_views,GET,GetSOPOrderDespatchLineViews,SOP Despatch Line Views,SOP Order Despatch Line Views
+sop,/sop_order_despatch_views,GET,GetSOPOrderDespatchViews,SOP Despatch Note Views,SOP Order Despatch Views
+sop,/sop_order_entry_types,GET,GetSOPOrderEntryTypes,Sales Order Entry Types,SOP Order Entry Types
+sop,/sop_order_line_traceable_items,POST,PostSOPOrderLineTraceableItems,Sales Order Line Traceable Items,SOP Order Line Traceable Items
+sop,/sop_order_line_views,GET,GetSOPOrderLineViews,SOP Order Line Views,SOP Order Line Views
+sop,/sop_order_lines/{Id},GET,GetSOPOrderline,Sales Order Line,SOP Order Lines
+sop,/sop_orders/{sopOrderId}/sop_order_lines,GET,GetSOPOrderLinesForSOPOrder,Sales Order Lines For A Sales Order,SOP Order Lines
+sop,/sop_orders/{sopOrderId}/sop_order_lines/{Id},GET,GetSOPOrderLineForSOPOrder,Sales Order Line From Sales Order,SOP Order Lines
+sop,/sop_order_payment_types,GET,GetSOPOrderPaymentTypes,SOP Order Payment Types,SOP Order Payment Types
+sop,/sop_order_return_invoice_credit_views,GET,GetSOPOrderInvoiceViews,Sales Order Return Invoice Credit Views,SOP Order Return Invoice Credit Views
+sop,/sop_order_return_line_invoice_credit_views,GET,GetSOPOrderReturnLineInvoiceViews,Sales Order Return Line Invoice Credit Views,SOP Order Return Line Invoice Credit Views
+sop,/sop_order_return_views,GET,GetSOPOrderReturnViews,SOP Order Return Views,SOP Order Return Views
+sop,/customers/{customerId}/sop_orders,GET,GetSOPOrdersForCustomer,Sales Orders For A Customer,SOP Orders
+sop,/sop_orders,GET,GetSOPOrders,Sales Orders,SOP Orders
+sop,/sop_orders,POST,PostSOPOrder,Sales Orders,SOP Orders
+sop,/sop_orders/{Id},DELETE,DeleteSOPOrder,Sales Order,SOP Orders
+sop,/sop_orders/{Id},GET,GetSOPOrder,Sales Order,SOP Orders
+sop,/sop_orders/{Id},PUT,PutSOPOrder,Sales Order,SOP Orders
+sop,/sop_orders_new,POST,PostSOPOrdersNew,New Sales Order With Defaults,SOP Orders
+sop,/sop_orders_new/{Id},PUT,PutSOPOrderNew,New Sales Order With Defaults,SOP Orders
+sop,/sop_orders_duplicate,POST,PostSOPOrdersDuplicate,Duplicate Sales Order,SOP Orders Duplicate
+sop,/sop_orders_status,POST,PostSOPOrdersStatus,SOP Orders Status,SOP Orders Status
+sop,/sop_payment_methods,GET,GetSOPPaymentMethods,SOP Payment Methods,SOP Payment Methods
+sop,/sop_payment_methods/{Id},GET,GetSOPPaymentMethod,SOP Payment Method,SOP Payment Methods
+sop,/sop_proforma_line_views,GET,GetSOPProformaLineViews,SOP Pro Forma Line Views,SOP Pro Forma Line Views
+sop,/sop_quote_line_views,GET,GetSOPQuoteLineViews,SOP Quote Line Views,SOP Quote Line Views
+sop,/sop_quote_views,GET,GetSOPQuoteViews,SOP Quote Views,SOP Quote Views
+sop,/sop_quotes,GET,GetSOPQuotes,Sales Quotes,SOP Quotes
+sop,/sop_quotes,POST,PostSOPQuote,Sales Quotes,SOP Quotes
+sop,/sop_quotes/{Id},DELETE,DeleteSOPQuote,Sales Quote,SOP Quotes
+sop,/sop_quotes/{Id},GET,GetSOPQuote,Sales Quote,SOP Quotes
+sop,/sop_quotes/{Id},PUT,PutSOPQuote,Sales Quote,SOP Quotes
+sop,/sop_quotes_new,POST,PostSOPQuotesNew,New Sales Quote With Defaults,SOP Quotes
+sop,/sop_quotes_new/{Id},PUT,PutSOPQuoteNew,New Sales Quote With Defaults,SOP Quotes
+sop,/sop_quotes_duplicate,POST,PostSOPQuotesDuplicate,Duplicate Sales Quote,SOP Quotes Duplicate
+sop,/sop_return_line_views,GET,GetSOPReturnLineViews,SOP Return Line Views,SOP Return Line Views
+sop,/sop_return_receipt_line_views,GET,GetSOPReturnReceiptLineViews,SOP Receipt Line Views,SOP Return Receipt Line Views
+sop,/customers/{customerId}/sop_returns,GET,GetSOPReturnsForCustomer,Sales Returns For A Customer,SOP Returns
+sop,/sop_returns,GET,GetSOPReturns,Sales Returns,SOP Returns
+sop,/sop_returns,POST,PostSOPReturn,Sales Returns,SOP Returns
+sop,/sop_returns/{Id},DELETE,DeleteSOPReturn,Sales Return,SOP Returns
+sop,/sop_returns/{Id},GET,GetSOPReturn,Sales Return,SOP Returns
+sop,/sop_returns/{Id},PUT,PutSOPReturn,Sales Return,SOP Returns
+sop,/sop_returns_new,POST,PostSOPReturnsNew,New Sales Return With Defaults,SOP Returns
+sop,/sop_returns_new/{Id},PUT,PutSOPReturnNew,New Sales Return With Defaults,SOP Returns
+sop,/sop_returns_duplicate,POST,PostSOPReturnsDuplicate,Duplicate Sales Return,SOP Returns Duplicate
+sop,/sop_returns_status,POST,PostSOPReturnsStatus,SOP Returns Status,SOP Returns Status
+sop,/sop_settings,GET,GetSOPSettings,SOP Settings,SOP Settings
+sop,/sop_settings/{Id},GET,GetSOPSetting,SOP Setting,SOP Settings
+sop,/sop_show_on_picking_list_types,GET,GetSOPShowOnPickingListTypes,SOP Show On Picking List Types,SOP Show On Picking List Types
+sop,/sop_trade_line_status_types,GET,GetSOPTradeLineStatusTypes,Trade Line Status Types,SOP Trade Line Status Types
+sop,/sop_user_permissions,GET,GetSOPUserPermissions,Invoice And Order User Permissions,SOP User Permissions
+sop,/sop_user_permissions/{Id},GET,GetSOPUserPermission,Invoice And Order Permissions For A Single User,SOP User Permissions
+sop,/suggested_products,POST,SuggestedProducts,Suggested Products,Suggested Products

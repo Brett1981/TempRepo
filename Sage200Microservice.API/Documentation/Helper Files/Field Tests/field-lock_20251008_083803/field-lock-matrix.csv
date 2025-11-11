@@ -1,0 +1,44 @@
+﻿"Path","Method","Name","Outcome","StatusCode","PrimaryId","Extra","Error"
+"/sop_orders","POST","sop_orders_create","Success","200","198557679","0001032726",""
+"/sop_orders_duplicate","POST","sop_orders_duplicate","Success","200","198557689","TBA",""
+"/sales_receipts","POST","sales_receipts_create","Success","200","3268786","",""
+"/sales_payments","POST","sales_payments_create","Success","200","3268787","",""
+"/sales_invoices","POST","sales_invoices_create","Success","200","3268788","",""
+"/sales_invoices_new","POST","sales_invoices_new_create","Success","200","","",""
+"/sales_credit_notes","POST","sales_credit_notes_create","Success","200","3268789","",""
+"/sales_credit_notes_new","POST","sales_credit_notes_new_create","Success","200","","",""
+"/customers_new","POST","customers_new_create","Failed","400","","","NAME: customers_new_create
+URL : https://api.columbus.sage.com/uk/sage200extra/accounts/v1/customers_new
+STATUS: 400 Bad Request
+HEADERS:
+  Connection: keep-alive
+  CF-RAY: 98b3fa5eb8461260-LHR
+  Pragma: no-cache
+  Strict-Transport-Security: max-age=15768000
+  x-ms-proxy-app-id: 4f9bd490-a198-4e30-979b-447a529d36af
+  x-ms-proxy-group-id: 906c6daf-ad85-4756-bc93-8ca64b32e5e5
+  x-ms-proxy-subscription-id: 260244d9-d475-4990-9550-997fbd6ade67
+  x-ms-proxy-transaction-id: d5418b99-7829-4766-8f63-ab1831a8c8da
+  x-ms-proxy-service-name: proxy-appproxy-NEUR-DUB01P-3
+  x-ms-proxy-data-center: NEUR
+  x-ms-proxy-connector-id: d35c590b-0463-49c6-adb2-ef1b1ecfdd5f
+  X-Content-Type-Options: nosniff
+  X-XSS-Protection: 1; mode=block
+  Nel: {""report_to"":""network-errors"",""max_age"":86400,""success_fraction"":0.2,""failure_fraction"":1.0}
+  Report-To: {""group"":""network-errors"",""max_age"":86400,""endpoints"":[{""url"":""https://ffde.nelreports.net/api/report?cat=proxy-appproxy-NEUR-DUB01P-3""}]}
+  cf-cache-status: DYNAMIC
+  Content-Length: 135
+  Cache-Control: no-store, no-cache
+  Content-Type: application/json; charset=utf-8
+  Date: Wed, 08 Oct 2025 07:38:19 GMT
+  Expires: -1
+  Set-Cookie: __cf_bm=i4Jw8cxTvpe5aBP1g2Wq8usdfmjiftUKbwPxELuGh0M-1759909099-1.0.1.1-gVg23jfsvMREp8pSqE6ePpvHJYEB852_6eWPdJYgdeE3zZjS1wdKNUXVOs942euigs1dgYwrIrU7QjUoOlNKpfDDETW4lxSKNTbVTjdow88; path=/; expires=Wed, 08-Oct-25 08:08:19 GMT; domain=.columbus.sage.com; HttpOnly; Secure; SameSite=None
+  Server: cloudflare
+  X-Powered-By: ASP.NET
+BODY:
+
+REQUEST BODY:
+""""
+
+"
+"/customers/{id}/customer_contacts","POST","customer_contacts_create","Success","200","198557739","",""

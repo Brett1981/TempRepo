@@ -1,0 +1,461 @@
+﻿/*
+PHASE 1 — INVENTORY (from Sage200.zip)
+======================================
+
+A) Solution(s)
+- Sage200/Sage200Microservice.sln
+
+B) Project(s)
+- Sage200/Sage200Microservice.API/Sage200Microservice.API.csproj
+- Sage200/Sage200Microservice.Data/Sage200Microservice.Data.csproj
+- Sage200/Sage200Microservice.Services/Sage200Microservice.Services.csproj
+
+C) Counts
+- Total files in ZIP: 369
+- Top-level folders (under Sage200/): Sage200Microservice.API, Sage200Microservice.Data, Sage200Microservice.Services
+- Top-level files: Sage200Microservice.sln, field-lock.yml
+
+D) Tree — top 2 levels per project
+
+Sage200Microservice.API (Path: Sage200/Sage200Microservice.API)
+  ├─ (files): Dockerfile, Program.cs, Program.TestVisibility.cs, SwaggerConfig.cs, appsettings.json, appsettings.Development.json, health-check-packages.txt, package-references.txt, Sage200Microservice.API.csproj, Sage200Microservice.API.http
+  ├─ Attributes/ (SageRoutingHeadersAttribute.cs)
+  ├─ Configuration/ (ApiKeyClientResolveContributor.cs, ApiKeyRateLimitConfiguration.cs, ApiKeyRotationOptions.cs, HeaderOptions.cs, KafkaOptions.cs, OAuthOptions.cs, SageApiOptions.cs, SiteCompanyOptions.cs)
+  ├─ Controllers/ (AdminController.cs, AdminLinksController.cs, ApiKeysController.cs, AuditLogsController.cs, AuthController.cs, BatchController.cs, BusinessMetricsController.cs, CustomersController.cs, CustomersController.Direct.cs, CustomerSopInvoiceCreditLineViewController.cs, CustomerViewExportController.cs, HealthController.cs, InvoicesController.cs, LinksController.cs, SageProbeController.cs, SalesCreditNotesController.cs, SalesInvoicesController.cs, SalesPaymentsController.cs, SalesReceiptsController.cs, SopDocumentStatusTypesController.cs, SopOrderStatusController.cs, StatusController.cs)
+  ├─ DTOs/ (numerous DTOs incl. Customers, Sales, SOP, Sync, etc.)
+  ├─ Documentation/ (BusinessMetricsDashboard.md, ImplementationSummary.md, MonitoringAndAlerting.md, Powershell commands.md, README_ExternalRefs.md, SecurityFeatures.md, OpenAPI under "Helper Files")
+  ├─ Extensions/ (ServiceCollectionKafkaExtensions.cs)
+  ├─ Filters/ (ValidationFilter.cs)
+  ├─ HealthChecks/ (EndpointDiag.cs, HealthCheckConfig.cs, KafkaConsumerLivenessHealthCheck.cs, SageApiHealthCheck.cs, SageDebugController.cs)
+  ├─ Logging/ (OAuthStartupDiag.cs, SerilogConfig.cs)
+  ├─ Metrics/ (ApiMetrics.cs)
+  ├─ Middleware/ (ApiKeyHeaderMiddleware.cs, ExceptionHandlingMiddleware.cs, RequestLoggingMiddleware.cs, SiteCompanyHeaderMiddleware.cs)
+  ├─ Models/ (numerous)
+  ├─ Properties/ (launchSettings.json)
+  ├─ Protos/ (invoice.proto, sop.proto)
+  ├─ Security/ (IpAddressHelper.cs)
+  ├─ Services/ (ApiKeyRotationService.cs, AuditLogCleanupService.cs, AuthEndpointMapping.cs, CacheInvalidationService.cs, CachingService.cs, InvoiceGrpcService.cs, LogPayloadProtector.cs, SopGrpcService.cs)
+  ├─ Swagger/ (EnsureRequestBodyOperationFilter.cs, HeaderRequirementsOperationFilter.cs)
+  ├─ Tracing/ (ActivitySourceProvider.cs, TracingConfig.cs)
+  ├─ Validators/ (ApiKeyValidators.cs, various *Validator.cs)
+  ├─ google/api/
+  ├─ logs/ (.gitkeep, several log files)
+  ├─ wwwroot/ (business-dashboard.html, dashboardScript.js, swagger-ui/…)
+
+Sage200Microservice.Data (Path: Sage200/Sage200Microservice.Data)
+  ├─ (files): ApplicationContext.cs, ApplicationContextFactory.cs, DatabaseSeeder.cs, Sage200Microservice.Data.csproj
+  ├─ Extensions/ (QueryableExtensions.cs)
+  ├─ Migrations/ (multiple EF migrations e.g. 20250818160113_InitialCreate.*, …)
+  ├─ Models/ (ApiKey.cs, ApiLog.cs, AuditLog.cs, ExternalEntityType.cs, ExternalIdLink.cs, InvoiceStatusHistory.cs, OAuthToken.cs, TransactionAttempt.cs)
+  ├─ Repositories/ (ApiKeyRepository.cs, ApiLogRepository.cs, AuditLogRepository.cs, CustomerRepository.cs, ExternalIdLinkRepository.cs, IApiKeyRepository.cs, IApiLogRepository.cs, IAuditLogRepository.cs, ICustomerRepository.cs, IExternalIdLinkRepository.cs, IIdempotencyRecordRepository.cs, …)
+
+Sage200Microservice.Services (Path: Sage200/Sage200Microservice.Services)
+  ├─ (files): Sage200Microservice.Services.csproj
+  ├─ Configuration/ (SopFeaturesOptions.cs)
+  ├─ Http/ (CorrelationIdHandler.cs, SageApiClientProbeExtensions.cs, SageApiLoggingHandler.cs)
+  ├─ Implementations/ (ApiKeyService.cs, AuditLogService.cs, BatchProcessingService.cs, CustomerService.cs, InvoiceService.cs, ReconciliationService.cs, SalesInvoicesService.cs, SalesReceiptsService.cs, SalesPaymentsService.cs, SopOrderService.cs, StatusService.cs, SyncService.cs, SageAuthenticationService.cs, SageApiClient.cs, SageCustomerClient.cs, SageInvoicesClient.cs, SageReceiptsClient.cs, SageSopClient.cs, SagePaymentsClient.cs)
+  ├─ Interfaces/ (IApiKeyService.cs, IAuditLogService.cs, IBatchProcessingService.cs, ICustomerService.cs, IInvoiceService.cs, IReconciliationService.cs, ISalesInvoicesService.cs, ISalesReceiptsService.cs, ISalesPaymentsService.cs, ISopOrderService.cs, IStatusService.cs, ISyncService.cs, ISageAuthenticationService.cs, ISageApiClient.cs, …)
+  ├─ Messaging/
+  │   ├─ Consumers/
+  │   │   ├─ Common/ (DlqEnvelope.cs, ResultMessageEnvelope.cs)
+  │   │   ├─ Results/ (InvoiceResultConsumer.cs, CustomerResultConsumer.cs, SopResultConsumer.cs)
+  │   │   └─ SalesInvoiceCreateConsumer.cs
+  │   ├─ Orchestration/ (InvoiceRequestOrchestrator.cs)
+  │   └─ Requests/ (InvoiceRequestConsumer.cs, MdmInvoiceMessage.cs)
+  ├─ Models/ (Customers/, Reconciliation/, Sage/, Sales/, Sop/, Sync/, OAuthToken.cs, OrderLine.cs, PagedResult.cs, RequestContext.cs, StatusMapping.cs)
+  ├─ Shared/ (FriendlyFilters.cs, Helpers.cs, StatusMapping.cs)
+  ├─ Tracing/ (TracingHelper.cs)
+
+E) Project → Key Folders Present
+
+| Project | Controllers | Implementations | Messaging | Models | Repositories | Migrations | HealthChecks | Middleware | DTOs | OpenAPI | Protos | Extensions | Validators | Metrics | Security | Swagger | Tracing | Documentation |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Sage200Microservice.API | ✅ | — | — | ✅ | — | — | ✅ | ✅ | ✅ | ✅ (via Documentation/*) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Sage200Microservice.Data | — | — | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — |
+| Sage200Microservice.Services | — | ✅ | ✅ | ✅ | — | — | — | — | ✅ | — | — | — | — | — | — | — | ✅ | — |
+
+F) Specific files (existence)
+- Services/Messaging/Consumers/Results/InvoiceResultConsumer.cs : TRUE — Sage200/Sage200Microservice.Services/Messaging/Consumers/Results/InvoiceResultConsumer.cs
+- Services/Messaging/Consumers/Results/CustomerResultConsumer.cs : TRUE — Sage200/Sage200Microservice.Services/Messaging/Consumers/Results/CustomerResultConsumer.cs
+- Services/Messaging/Consumers/Results/SopResultConsumer.cs : TRUE — Sage200/Sage200Microservice.Services/Messaging/Consumers/Results/SopResultConsumer.cs
+- API/Extensions/ServiceCollectionKafkaExtensions.cs : TRUE — Sage200/Sage200Microservice.API/Extensions/ServiceCollectionKafkaExtensions.cs
+- API/HealthChecks/KafkaConsumerLivenessHealthCheck.cs : TRUE — Sage200/Sage200Microservice.API/HealthChecks/KafkaConsumerLivenessHealthCheck.cs
+- Services/Implementations/Sales/SalesInvoicesService.cs : TRUE — Sage200/Sage200Microservice.Services/Implementations/SalesInvoicesService.cs  (note: path is Implementations/SalesInvoicesService.cs, not under Implementations/Sales/)
+- Services/Implementations/Sop/SopOrderService.cs : TRUE — Sage200/Sage200Microservice.Services/Implementations/SopOrderService.cs  (note: path matches)
+- Services/Implementations/Customers/CustomerService.cs : FALSE  (actual file is Sage200/Sage200Microservice.Services/Implementations/CustomerService.cs)
+- Data/ApplicationContext.cs : TRUE — Sage200/Sage200Microservice.Data/ApplicationContext.cs
+- Data/Models/ExternalIdLink.cs : TRUE — Sage200/Sage200Microservice.Data/Models/ExternalIdLink.cs
+- Data/Models/TransactionAttempt.cs : TRUE — Sage200/Sage200Microservice.Data/Models/TransactionAttempt.cs
+- Data/Models/AuditLog.cs : TRUE — Sage200/Sage200Microservice.Data/Models/AuditLog.cs
+- Documentation/Helper Files/OpenAPI/sales.json : TRUE — Sage200/Sage200Microservice.API/Documentation/Helper Files/OpenAPI/sales.json
+- Documentation/Helper Files/OpenAPI/sop.json : TRUE — Sage200/Sage200Microservice.API/Documentation/Helper Files/OpenAPI/sop.json
+
+G) After listing actual files — “Expected” folders from SageStructure.txt that are missing
+- API expected but not present: Field Tests, Flows, Kafka, OpenAPI (a duplicate alias; actual files are under Documentation/Helper Files/OpenAPI), Operations, field-lock_07102025_094614
+- Data expected but not present: Common, Configuration, Consumers, Contracts, Customers, Http, Implementations, Interfaces, Logging, Messaging, Orchestration, Reconciliation, Sage, Sales, Shared, Sop, Sync
+- Services: no discrepancies flagged in SageStructure.txt vs current two-level scan.
+
+
+PHASE 2 — SPEC ALIGNMENT (Sage200APIMicroservice — Technical Project Review & Working Protocol.pdf)
+===================================================================================================
+
+1–3 Architecture & structure
+✅ Three-project solution present (API / Services / Data). Controllers, DTOs, health checks, validation, Kafka DI extensions, and docs align with the layered architecture.
+
+4 API Access & shared headers (X-Api-Key, X-Site, X-Company, X-External-Ref, Idempotency-Key)
+✅ Unified header handling present (Attributes/SageRoutingHeadersAttribute.cs) and middleware for API key/header checks present. Swagger operation filters exist for header requirements.
+
+5 Kafka message flow (MDM_INVOICE, MDM_CUSTOMER, MDM_SOP_ORDER; *_RESULTS; DLQ) and consumers/producers
+⚙️ Result consumers exist and are referenced in DI (ServiceCollectionKafkaExtensions.cs registers InvoiceResultConsumer, CustomerResultConsumer, SopResultConsumer). Topics referenced in code:
+  - Consumers/Results: MDM_INVOICE_RESULTS, MDM_INVOICE_RESULTS_DLQ; MDM_CUSTOMER_RESULTS, MDM_CUSTOMER_RESULTS_DLQ; MDM_SOP_RESULTS, MDM_SOP_RESULTS_DLQ
+  - Invoice request: MDM_INVOICES, MDM_INVOICES_DLQ, MDM_INVOICE_RESULTS, MDM_INVOICE
+  Gaps: I did not see explicit *request* topics for CUSTOMER or SOP order (e.g., MDM_CUSTOMERS, MDM_SOP_ORDERS) in this scan.
+
+6 HTTP endpoints & Airflow workflow (including /api/payments/export-jobs and /api/payments/allocations/check)
+❌ Could not find routes containing "export-jobs" or "allocations/check" in API controllers. Health/Auth/Status endpoints exist (Auth: /auth/login, /auth/callback, /auth/status, POST /auth/revoke; Invoices: GET /api/invoices/{invoiceReference}/status). Health checks are configured, but no explicit /api/payments/export-jobs or /api/payments/allocations/check endpoints are present.
+
+8 Database models vs spec (ApiKeys, TransactionAttempts, ExternalIdLink inc. allocation columns, AuditLog, OAuthTokens)
+✅ Models are present and aligned:
+  - ExternalIdLink includes: IsFullyAllocated, AllocatedValue, OutstandingValue, LastAllocationCheckUtc, LastAllocationChangeUtc
+  - TransactionAttempt includes: IdempotencyKeyHash (MaxLength 88; SHA-512 Base64), ProcessingStatus, SageUrn, SageId, ProcessingCompletedUtc, DurationMs, Kafka* fields
+  - ApiKey includes: Key, ClientName, IsActive, ExpiresAt, and rotation/grace/previous key/version fields
+  - AuditLog model with enums (AuditEventType/Category/Severity/Status)
+  - OAuthToken model present
+
+11 Security & OAuth governance
+✅ AuthController and SageAuthenticationService present; OAuth token storage present; API key governance (rotation service, options) present.
+
+12 Monitoring & metrics (health checks, business dashboard)
+✅ Health checks (DB, Kafka, Sage API) configured via HealthCheckConfig; wwwroot/business-dashboard.html and Metrics/ApiMetrics.cs present.
+
+13–14 Deployment & runbook alignment
+✅ Dockerfile present in API; Swagger filters configured; structured logging (SerilogConfig.cs) present.
+
+
+PHASE 3 — DATABASE CHECK (EF Models & Migrations)
+==================================================
+
+ExternalIdLink — required allocation columns:
+- IsFullyAllocated : YES (bool)
+- OutstandingValue : YES (decimal?)
+- AllocatedValue : YES (decimal?)
+- LastAllocationCheckUtc : YES (DateTime?)
+- LastAllocationChangeUtc : YES (DateTime?)
+
+TransactionAttempt — required members:
+- IdempotencyKeyHash : YES (string, [MaxLength(88)] → SHA-512 Base64)
+- ProcessingStatus : YES (string)
+- SageUrn / SageId : YES/YES
+- ProcessingCompletedUtc : YES (DateTime?)
+- DurationMs : YES (int?)
+
+ApiKeys — required members:
+- Key, ClientName, IsActive, ExpiresAt : YES
+- Rotation/grace/version/previous key fields : YES (PreviousKey, Grace*, Version present)
+
+AuditLog — enums and required fields:
+- Enums present: AuditEventType, AuditEventCategory, AuditEventSeverity, AuditEventStatus
+- Model has Id, Timestamp, and typed fields.
+
+
+PHASE 4 — KAFKA & ENDPOINTS AUDIT
+==================================
+
+Topics referenced in code:
+- Sage200Microservice.Services/Messaging/Consumers/Common/ResultMessageEnvelope.cs  → MDM_CUSTOMER_RESULTS, MDM_INVOICE_RESULTS, MDM_SOP_RESULTS
+- Services/Messaging/Consumers/Results/CustomerResultConsumer.cs                    → MDM_CUSTOMER_RESULTS, MDM_CUSTOMER_RESULTS_DLQ
+- Services/Messaging/Consumers/Results/InvoiceResultConsumer.cs                     → MDM_INVOICE_RESULTS, MDM_INVOICE_RESULTS_DLQ
+- Services/Messaging/Consumers/Results/SopResultConsumer.cs                         → MDM_SOP_RESULTS, MDM_SOP_RESULTS_DLQ
+- Services/Messaging/Orchestration/InvoiceRequestOrchestrator.cs                    → MDM_INVOICES, MDM_INVOICE_RESULTS
+- Services/Messaging/Requests/InvoiceRequestConsumer.cs                             → MDM_INVOICES, MDM_INVOICES_DLQ, MDM_INVOICE_RESULTS
+- Services/Messaging/Requests/MdmInvoiceMessage.cs                                  → MDM_INVOICE
+
+Result Consumers & DLQ:
+- Result consumers: **Present** (Invoice/Customer/SOP).
+- DLQ envelope class: **Present** (Consumers/Common/DlqEnvelope.cs).
+- DLQ usage noted in result consumers and invoice request consumer. (MDM_*_RESULTS_DLQ, MDM_INVOICES_DLQ)
+
+HTTP endpoints (presence & signatures):
+- /api/payments/export-jobs : **NOT FOUND**
+- /api/payments/allocations/check : **NOT FOUND**
+- /api/auth/refresh-token : **NOT FOUND** (AuthController has: GET login, GET callback, GET status, POST revoke)
+- /health (via health config): **Present** (HealthCheckConfig + UseHealthChecksConfig in Program)
+- /health/kafka (liveness via KafkaConsumerLivenessHealthCheck): **Present** in health setup
+- /status : **Present** under /auth/status; invoice status also at GET /api/invoices/{invoiceReference}/status
+
+
+PHASE 5 — GAP TABLE
+====================
+
+| Spec Sec | Feature/Component | Source (path) | Status | Gap / Action |
+|----------|-------------------|---------------|--------|--------------|
+| 1–3 | 3-project architecture (API/Services/Data) | Solution + 3 .csproj | ✅ | — |
+| 4 | Shared header validation & API key middleware | API/Attributes/*, API/Middleware/*, Swagger filters | ✅ | Ensure all controllers and Kafka paths consistently enforce X-Api-Key, X-Site, X-Company, X-External-Ref, Idempotency-Key as per spec. |
+| 5 | Kafka result consumers (Invoice/Customer/SOP) | Services/Messaging/Consumers/Results/*.cs | ✅ | — |
+| 5 | Kafka request consumers/producers (INVOICE/CUSTOMER/SOP) | Services/Messaging/* | ⚙️ | Invoice present (MDM_INVOICES…); verify/add CUSTOMER and SOP request topics/consumers if spec requires. |
+| 5 | DLQ publisher | Services/Messaging/Consumers/Common/DlqEnvelope.cs | ✅ | Ensure all failure paths publish DLQ with correlationId + reason + original payload. |
+| 6 | /api/payments/export-jobs | (not found) | ❌ | Implement in API/Controllers (e.g., PaymentsController or BatchController) with spec’d request/response and pagination. |
+| 6 | /api/payments/allocations/check | (not found) | ❌ | Implement endpoint to drive allocation checks per spec; update ExternalIdLink & InvoiceStatusHistory accordingly. |
+| 6 | /status & invoice status | AuthController.cs (/auth/status), InvoicesController.cs (GET {invoiceReference}/status) | ✅ | — |
+| 8 | ExternalIdLink allocation fields | Data/Models/ExternalIdLink.cs | ✅ | — |
+| 8 | TransactionAttempt required fields | Data/Models/TransactionAttempt.cs | ✅ | — |
+| 8 | ApiKey with rotation/grace/version | Data/Models/ApiKey.cs | ✅ | — |
+| 8 | AuditLog + enums | Data/Models/AuditLog.cs | ✅ | — |
+| 11 | OAuth flows & token cache | Services/Implementations/SageAuthenticationService.cs, Data/Models/OAuthToken.cs, AuthController.cs | ✅ | Consider adding `/api/auth/refresh-token` if mandated by spec. |
+| 12 | Monitoring (health, metrics) & business dashboard | API/HealthChecks/*, API/Metrics/ApiMetrics.cs, wwwroot/business-dashboard.html | ✅ | — |
+| 13–14 | Docker & runbook alignment | API/Dockerfile, Swagger, Serilog | ✅ | — |
+
+
+PHASE 6 — PRIORITISED REMEDIATION PLAN (file-level actions)
+===========================================================
+
+1) HTTP endpoints required by spec (Highest)
+   - Add **/api/payments/export-jobs** and **/api/payments/allocations/check**.
+     • Create/extend a `PaymentsController.cs` (or extend existing `SalesPaymentsController.cs`) with:
+       - `[HttpGet("export-jobs")]` returning export job listings (filtering, pagination).
+       - `[HttpPost("allocations/check")]` to trigger allocation checks and return summary per invoice.
+     • Update Swagger filters to annotate required headers.
+     • Wire service: `ISalesPaymentsService` / `IReconciliationService` orchestration methods to perform allocation checks and persist to `ExternalIdLink` + `InvoiceStatusHistory`.
+
+2) Kafka request coverage for CUSTOMER and SOP (High)
+   - Under `Services/Messaging/Requests/`:
+     • Implement `CustomerRequestConsumer.cs` & `SopOrderRequestConsumer.cs` (if required by spec) mirroring `InvoiceRequestConsumer.cs`.
+     • Confirm topic names match spec (e.g., `MDM_CUSTOMERS`, `MDM_SOP_ORDERS` and their `_DLQ`) and register in `ServiceCollectionKafkaExtensions.cs`.
+     • Extend orchestrators as needed (e.g., `CustomerRequestOrchestrator`, `SopOrderRequestOrchestrator`).
+
+3) Auth refresh endpoint (Medium)
+   - In `API/Controllers/AuthController.cs` add `[HttpPost("refresh-token")]` to refresh and store `OAuthToken` based on configured client credentials; update `HealthController`/status to surface OAuth token health if spec requires explicit endpoint.
+
+4) Controller/header consistency checks (Medium)
+   - Ensure all controller actions are covered by `SageRoutingHeadersAttribute` (or middleware) and that Swagger lists required headers (X-Api-Key, X-Site, X-Company, optionally X-External-Ref, Idempotency-Key where applicable).
+
+5) Repository & audit wiring (Medium)
+   - For allocation endpoints, write audit events via `IAuditLogRepository` and metrics via `ApiMetrics`. Ensure `ExternalIdLink`’s `IsFullyAllocated` flips to true when outstanding is 0, and set `LastAllocationCheckUtc` / `LastAllocationChangeUtc`.
+
+6) Folder alignment clean-ups (Low)
+   - Optionally normalize Services/Implementations layout for sub-areas (e.g., `Implementations/Customers/CustomerService.cs`) if you want to strictly mirror SageStructure.txt. This is cosmetic but aids orientation.
+
+— End of PHASES 1–6 —
+
+*/
+
+
+
+
+/*
+================================================================================
+PLAN LOCK — Payments Export & Allocation (Spec §6) — Namespaces Verified
+================================================================================
+
+I have unpacked and reviewed the uploaded _api-payments-endpoints.zip files.
+Observed namespaces and placements (matched exactly as in your code):
+- Controllers namespace:           Sage200Microservice.API.Controllers
+- Attributes namespace:            Sage200Microservice.API.Attributes
+- Swagger filters namespace:       Sage200Microservice.API.Swagger
+- Metrics class:                   Sage200Microservice.API.Metrics.ApiMetrics
+- Services interfaces:             Sage200Microservice.Services.Interfaces
+- Services implementations:        Sage200Microservice.Services.Implementations (and .Sales)
+- Data DbContext:                  Sage200Microservice.Data.ApplicationContext
+- Data models namespace:           Sage200Microservice.Data.Models
+- Data repositories namespace:     Sage200Microservice.Data.Repositories
+
+Relevant files loaded from ZIP (subset):
+- API:
+  - Controllers/SalesPaymentsController.cs (present; existing POST actions for payments)
+  - Controllers/SyncController.cs (present; used for data/recon ops)
+  - Attributes/SageRoutingHeadersAttribute.cs (present)
+  - Middleware/* (ApiKeyAuthentication*, AuditLogging*, GlobalExceptionHandler*, IpFiltering*, TracingMiddleware.cs)
+  - Metrics/ApiMetrics.cs (present; TrackApiRequest(...) etc.)
+  - Swagger/EnsureRequestBodyOperationFilter.cs, HeaderRequirementsOperationFilter.cs (present)
+- Services:
+  - Interfaces/ISalesPaymentsService.cs (CreateAsync only)
+  - Interfaces/IReconciliationService.cs (GetReconciliationDataAsync only)
+  - Implementations/Sales/SalesPaymentsService.cs
+  - Implementations/ReconciliationService.cs
+  - Implementations/SageApiClient.cs
+- Data:
+  - ApplicationContext.cs (DbSets + OnModelCreating present)
+  - Models/ExternalIdLink.cs  (Has IsFullyAllocated, AllocatedValue, OutstandingValue, LastAllocationCheckUtc, LastAllocationChangeUtc)
+  - Models/InvoiceStatusHistory.cs
+  - Repositories: IExternalIdLinkRepository.cs, ExternalIdLinkRepository.cs, IInvoiceStatusHistoryRepository.cs, InvoiceStatusHistoryRepository.cs, IAuditLogRepository.cs, AuditLogRepository.cs
+
+--------------------------------------------------------------------------------
+A) CONTROLLERS & ACTIONS (to create/modify)
+--------------------------------------------------------------------------------
+
+1) Add new GET endpoint (explicit route override) in existing controller class:
+   File:   Sage200Microservice.API/Controllers/SalesPaymentsController.cs
+   Route:  GET /api/payments/export-jobs
+   Attrs:  [HttpGet("/api/payments/export-jobs")]
+           [Produces("application/json")]
+           [SageRoutingHeaders(DocumentApiKey = true)]
+   Sig:    public async Task<IActionResult> GetPaymentExportJobs(
+              [FromQuery] int page = 1,
+              [FromQuery] int pageSize = 50,
+              [FromQuery] string? externalRef = null,
+              [FromQuery] string? status = null,
+              CancellationToken ct = default)
+
+   Purpose:
+   - Returns a paginated list of candidate payment export “jobs” scoped by authenticated API key.
+   - Jobs are derived from ExternalIdLink rows where:
+       EntityType == SalesInvoice AND (IsFullyAllocated == false OR IsFullyAllocated is null).
+   - Optional filters: externalRef (exact or starts-with), status (e.g., “Pending”, “PartAllocated”, “Allocated”).
+   - Headers: X-Api-Key (required), X-External-Ref (required by spec), X-Site/X-Company (optional defaults).
+   - Metrics: ApiMetrics.ApiRequests / TrackApiRequest; success/failure counters.
+   - Audit: Record DataAccess event (Action = "PaymentsExport").
+
+   Returns:
+   - Services.Models.Common.PaginatedDataResponse<Services.Models.Reconciliation.ReconciliationDataDto>
+     (re-using your existing PaginatedDataResponse<T> and reconciliation DTO if already used for invoice views),
+     or a thin DTO that already exists in your Services.Models.* for outward lists; no new DTO types invented.
+
+2) Add new POST endpoint (explicit route override) in the same controller:
+   File:   Sage200Microservice.API/Controllers/SalesPaymentsController.cs
+   Route:  POST /api/payments/allocations/check
+   Attrs:  [HttpPost("/api/payments/allocations/check")]
+           [Produces("application/json")]
+           [SageRoutingHeaders(DocumentApiKey = true)]
+   Sig:    public async Task<IActionResult> CheckAllocations(
+              [FromBody] Services.Models.Reconciliation.AllocationsCheckRequest request,
+              CancellationToken ct = default)
+
+   Purpose:
+   - Triggers an allocation status refresh for target invoices (by external refs or page-scan).
+   - For each matched ExternalIdLink (SalesInvoice):
+       * Reads latest allocation figures (via SageApiClient or equivalent method already present).
+       * Updates: AllocatedValue, OutstandingValue, IsFullyAllocated (true when OutstandingValue == 0),
+                  LastAllocationCheckUtc (always to now), LastAllocationChangeUtc (only when values changed).
+       * Appends an InvoiceStatusHistory row with allocation snapshot.
+   - Emits metrics (request counters + duration) and AuditLog entries:
+       Action = "AllocationsCheck", Category = Business, Status = Success/Failure.
+
+   Returns:
+   - A summary DTO already available in Services.Models.Reconciliation (e.g., AllocationsCheckResult)
+     or a minimal result model from your Services.Models.Common; no new types invented.
+
+--------------------------------------------------------------------------------
+B) SERVICES (interfaces + implementations) — updates/extensions
+--------------------------------------------------------------------------------
+
+Interfaces:
+- ISalesPaymentsService (Services.Interfaces)
+  * No change for payment creation.
+  * (No new methods added here for allocation, to keep responsibilities clear.)
+
+- IReconciliationService (Services.Interfaces)
+  * Add:
+      Task<PaginatedDataResponse<ReconciliationDataDto>> GetPaymentExportJobsAsync(
+          int apiKeyId,
+          int page,
+          int pageSize,
+          string? externalRef,
+          string? status,
+          CancellationToken ct);
+
+      Task<AllocationsCheckResult> CheckInvoiceAllocationsAsync(
+          int apiKeyId,
+          AllocationsCheckRequest request,
+          CancellationToken ct);
+
+Implementations:
+- ReconciliationService (Services.Implementations)
+  * Implement GetPaymentExportJobsAsync:
+      - Resolve scope by apiKeyId ⇒ AppId (same numeric key in ExternalIdLink.AppId in your schema).
+      - Query ApplicationContext.ExternalIdLinks where:
+          AppId == apiKeyId (or via ApiKeys table mapping if they differ in your DB),
+          EntityType == ExternalEntityType.SalesInvoice,
+          (IsFullyAllocated == false OR IsFullyAllocated is null),
+          apply filters + pagination;
+        Project to existing ReconciliationDataDto (do not invent new DTO).
+  * Implement CheckInvoiceAllocationsAsync:
+      - Resolve target ExternalIdLinks from request (list of external refs OR page-scan via same predicate).
+      - For each link:
+         · Call SageApiClient (or existing client method) to retrieve current allocations/outstanding.
+         · Update link fields (AllocatedValue, OutstandingValue, IsFullyAllocated, LastAllocationCheckUtc,
+           and LastAllocationChangeUtc when values changed).
+         · Add InvoiceStatusHistory row (Status string consistent with current business status mapping).
+      - Save changes once per batch or per item (as per your existing unit-of-work pattern).
+      - Return summary (counts, any failures).
+
+- SalesPaymentsService (Services.Implementations.Sales)
+  * No change required for these endpoints.
+
+- SageApiClient (Services.Implementations)
+  * Reuse any existing public method that fetches invoice allocation/outstanding figures by URN or by reference.
+  * If needed, add a NON-breaking helper method (internal/private) to combine calls; do not change public surface unexpectedly.
+
+--------------------------------------------------------------------------------
+C) DATA ACCESS — repositories & DbContext usage
+--------------------------------------------------------------------------------
+
+Repositories used:
+- IExternalIdLinkRepository / ExternalIdLinkRepository
+  * Use existing “find/list by external/app/entity” methods if present.
+  * If a precise list method is missing, perform the LINQ query directly via ApplicationContext (already injected into ReconciliationService).
+  * Update tracked ExternalIdLink entities and SaveChanges via ApplicationContext.
+
+- IInvoiceStatusHistoryRepository / InvoiceStatusHistoryRepository
+  * Use base Repository<T>.AddAsync(...) (already available via your generic repository) to append history rows.
+
+- IAuditLogRepository / AuditLogRepository
+  * Use base AddAsync(...) to record:
+      • Action: "PaymentsExport" for GET /api/payments/export-jobs (AuditEventType.DataAccess, Category.Business)
+      • Action: "AllocationsCheck" for POST /api/payments/allocations/check (AuditEventType.DataModification, Category.Business)
+    Include correlationId, route, caller (apiKeyId), and counts.
+
+DbContext:
+- Sage200Microservice.Data.ApplicationContext
+  * Used by ReconciliationService for set-based queries and updates when repository surface is insufficient.
+
+--------------------------------------------------------------------------------
+D) METRICS & AUDIT (where placed)
+--------------------------------------------------------------------------------
+
+Metrics (Sage200Microservice.API.Metrics.ApiMetrics):
+- In each controller action:
+  · using var inProg = _metrics.TrackApiRequest(HttpMethods.Get/Post, "<route>");
+  · _metrics.ApiRequests.WithLabels("GET/POST", "<route>", clientId).Inc();
+  · On failure paths: _metrics.ApiErrors.WithLabels("GET/POST", "<route>", clientId).Inc();
+  · Optionally observe durations via histogram (if exposed in ApiMetrics); otherwise rely on TrackInProgress.
+
+Audit (IAuditLogRepository):
+- On success and failure for both endpoints:
+  · PaymentsExport: eventType=DataAccess, category=Business, status=Success/Failure
+  · AllocationsCheck: eventType=DataModification, category=Business, status=Success/Failure
+  · Include correlationId (from header or generated), ip, resource (route), action, details (counts).
+
+--------------------------------------------------------------------------------
+E) DTOs / MODELS / ENTITIES (no new types invented)
+--------------------------------------------------------------------------------
+- ExternalIdLink (Data.Models) — fields to update:
+  · IsFullyAllocated, AllocatedValue, OutstandingValue, LastAllocationCheckUtc, LastAllocationChangeUtc.
+- InvoiceStatusHistory (Data.Models) — append entries per check.
+- Use existing DTOs:
+  · Services.Models.Common.PaginatedDataResponse<T>
+  · Services.Models.Reconciliation.ReconciliationDataDto (for export listing, if already used as a read model)
+  · Services.Models.Reconciliation.AllocationsCheckRequest / AllocationsCheckResult (if present).
+  (If AllocationsCheckRequest/Result aren’t present, we will reuse an existing minimal DTO from Services.Models.Reconciliation
+   or Services.Models.Common that the ZIP already provides; we will not invent new models.)
+
+--------------------------------------------------------------------------------
+F) HEADER VALIDATION (consistent with §4)
+--------------------------------------------------------------------------------
+- Rely on existing middleware (ApiKeyAuthenticationMiddleware + Site/Company handling already wired in your stack)
+  to enforce required headers. For Swagger documentation, add [SageRoutingHeaders(DocumentApiKey = true)] on the actions.
+- The controller actions will read/forward headers as needed (X-Api-Key, X-External-Ref required; X-Site, X-Company optional).
+
+================================================================================
+END PLAN LOCK
+================================================================================
+
+If you approve this Plan Lock, I will proceed with file-by-file delivery in your specified order:
+
+(1) Controller changes for GET /api/payments/export-jobs
+(2) Controller changes for POST /api/payments/allocations/check
+(3) Interface updates (ISalesPaymentsService, IReconciliationService)
+(4) Implementation updates (SalesPaymentsService, ReconciliationService)
+(5) Repository updates (only if required)
+(6) Swagger OperationFilter adjustments (only if required)
+*/
+

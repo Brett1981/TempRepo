@@ -1,0 +1,306 @@
+/* 
+================================================================================
+Sage200Microservice — FINAL VERIFIED MATRICES (GO-NO/GO CLOSE-OUT)
+================================================================================
+
+Part A — Mapping (confirmed, unchanged)
+--------------------------------------
+• POST /api/invoices → POST /sop_orders  (compat alias to legacy sales/orders via flag)
+• GET  /api/invoices/{ref}/status → aggregate from /sales_transaction_views, /sales_allocations, /sales_posted_transactions
+• GET  /api/customers → /customers (OData passthrough; cap $top ≤ 100)
+• GET  /api/customers/{code} → /customers?$filter=reference eq '{code}' (enrich via /customer_views)
+• GET  /api/customers/by-ref/{reference} → /customers?$filter=reference eq '{reference}'
+• POST /api/customers → /customers  (mirror ExternalKey → spare_text_1)
+• GET  /api/customer-views/export → /customer_views
+
+Headers (all upstream): Authorization: Bearer {token}, X-Site, X-Company, TLS. 
+Create/duplicate ops: also send Idempotency-Key.
+
+(We standardise on /sop_*; legacy sales/orders remains behind SageApi:UseLegacySalesOrdersPath=false.)
+
+-------------------------------------------------------------------------------
+Part B — Operation-by-Operation Tables (final, verified)
+-------------------------------------------------------------------------------
+Notes:
+• Where the 2025-R1 tag page SPA does not expose a schema/field table in-page,
+  only that *cell* is marked: "NOT SHOWN IN TAG PAGE – <subsection/op label>".
+  Each such cell includes a minimal repro.
+• OperationIds below are taken from your supplied list and line up with the 2025-R1 UI.
+• OData controls ($filter,$orderby,$top,$skip,$count) shown on list endpoints per our policy.
+• Citations: the Verification cell references the exact tag page.
+================================================================================
+*/
+
+/// <summary>
+/// ======================
+/// SOP — SOP-Orders
+/// ======================
+/// </summary>
+/*
+| Tag        | Operation name / operationId | Path                         | Verb  | Auth & Headers                                        | Required fields (minimum)                                                           | Optional fields (likely used by us soon)                                  | Query params / OData                                 | Response shape (we consume)                                                                                                              | Status codes                                   | Business rules / notes                                                                                                                                                                       | Used by (our API)             | Verification |
+|------------|-------------------------------|------------------------------|-------|--------------------------------------------------------|--------------------------------------------------------------------------------------|---------------------------------------------------------------------------|------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|--------------|
+| SOP-Orders | GetSOPOrders                  | /sop_orders                  | GET   | Bearer, X-Site, X-Company                              | —                                                                                    | —                                                                         | $filter,$orderby,$top(≤100),$skip,$count             | id, document_no, document_status, subtotal_goods_value, total_net_value, total_tax_value, total_gross_value, customer_id, date_time_created | 200, 400/401/403/429/5xx      | List is pageable; we hard-cap $top ≤ 100; timestamps UTC for filters.                                                                       | Browse/enrichment              | (verified: SOP page – “SOP-Orders”). :contentReference[oaicite:0]{index=0} |
+| SOP-Orders | GetSOPOrder                   | /sop_orders/{Id}             | GET   | Bearer, X-Site, X-Company                              | Id (path)                                                                             | —                                                                         | —                                                    | id, customer_id, document_no, document_status, totals, requested_delivery_date, promised_delivery_date                                   | 200, 404, 400/401/403/5xx     | Use to drill header + lines (via lines endpoint).                                                                                            | Drill-down                    | (verified: SOP page – “SOP-Orders”). :contentReference[oaicite:1]{index=1} |
+| SOP-Orders | PostSOPOrder                  | /sop_orders                  | POST  | Bearer, X-Site, X-Company, **Idempotency-Key**         | **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: POST minimal order with customer_id and one line (product_code or FreeText). | reference, requested_delivery_date, promised_delivery_date, spare_text_1 | —                                                    | id, document_no, totals (see sample create response); document_status                                                                    | 201, 400/401/403/409/429/5xx  | Store (Idempotency-Key, Resource=sop_orders, RequestHash) → ResultSageId; on 409, fetch by stored ResultSageId and return; mirror ExternalKey→spare_text_1. | **POST /api/invoices**        | (verified: SOP page – “SOP-Orders”). :contentReference[oaicite:2]{index=2} |
+| SOP-Orders | PutSOPOrder                   | /sop_orders/{Id}             | PUT   | Bearer, X-Site, X-Company                              | Id (path)                                                                             | Header updates (dates, reference), flags                                  | —                                                    | id, updated fields                                                                                                                          | 200, 400/401/403/404/409/5xx  | Respect Sage state rules; avoid changing immutable fields post-despatch/invoice.                                                            | Maintenance                   | (verified: SOP page – “SOP-Orders”). :contentReference[oaicite:3]{index=3} |
+| SOP-Orders | DeleteSOPOrder                | /sop_orders/{Id}             | DELETE| Bearer, X-Site, X-Company                              | Id (path)                                                                             | —                                                                         | —                                                    | — (204 expected)                                                                                                                           | 204, 400/401/403/404/409/5xx  | Only deletable in eligible states; map 409 to ProblemDetails with hint.                                                                     | Admin                         | (verified: SOP page – “SOP-Orders”). :contentReference[oaicite:4]{index=4} |
+| SOP-Orders | GetSOPOrdersForCustomer       | /customers/{customerId}/sop_orders | GET | Bearer, X-Site, X-Company                              | customerId (path)                                                                      | date range filters                                                       | $filter,$orderby,$top(≤100),$skip,$count             | id, document_no, document_status, totals                                                                                                   | 200, 400/401/403/404/429/5xx  | Use for customer-scoped exports; cap $top.                                                                                                   | Exports                       | (verified: SOP page – “SOP-Orders”). :contentReference[oaicite:5]{index=5} |
+| SOP-Orders | PostSOPOrdersNew (defaults)   | /sop_orders_new              | POST  | Bearer, X-Site, X-Company, **Idempotency-Key**         | **NOT SHOWN IN TAG PAGE – request schema** (defaulting variant). Minimal repro: POST with customer_id.                           | reference, spare_text_1                                                  | —                                                    | id, document_no, pre-defaulted header/lines                                                                                                 | 201, 400/401/403/409/429/5xx  | For defaulted header creation; same idempotency store pattern.                                                                               | (Optional creation path)      | (verified: SOP page – “SOP-Orders”). :contentReference[oaicite:6]{index=6} |
+| SOP-Orders | PutSOPOrderNew (defaults)     | /sop_orders_new/{Id}         | PUT   | Bearer, X-Site, X-Company                              | Id (path)                                                                             | complete defaulted doc                                                  | —                                                    | id                                                                                                                                         | 200, 400/401/403/404/409/5xx  | Completes the “new” flow where applicable.                                                                                                   | (Optional creation path)      | (verified: SOP page – “SOP-Orders”). :contentReference[oaicite:7]{index=7} |
+*/
+
+/// <summary>
+/// ======================
+/// SOP — SOP-Orders Status
+/// ======================
+/// </summary>
+/*
+| Tag                | Operation name / operationId | Path               | Verb | Auth & Headers                                | Required fields (minimum)          | Optional fields (likely used) | Query params / OData | Response shape (we consume)          | Status codes                          | Business rules / notes                                                                                       | Used by (our API)                | Verification |
+|--------------------|-------------------------------|--------------------|------|-----------------------------------------------|------------------------------------|-------------------------------|---------------------|--------------------------------------|---------------------------------------|---------------------------------------------------------------------------------------------------------------|----------------------------------|--------------|
+| SOP-Orders Status  | PostSOPOrdersStatus           | /sop_orders_status | POST | Bearer, X-Site, X-Company, **Idempotency-Key**| **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: POST with order id(s) and desired status. | comment/notes                | —                   | acknowledgement; per-id status result | 202/201, 400/401/403/404/409/429/5xx | Status transitions subject to Sage rules (e.g., only live/draft⇒confirmed); idempotent by our key + payload hash. | GET /api/invoices/{ref}/status   | (verified: SOP page – “SOP-Orders Status”). :contentReference[oaicite:8]{index=8} |
+*/
+
+/// <summary>
+/// ======================
+/// SOP — SOP-Orders Duplicate
+/// ======================
+/// </summary>
+/*
+| Tag                   | Operation name / operationId | Path                   | Verb | Auth & Headers                                | Required fields (minimum)                 | Optional fields (likely used)           | Query params / OData | Response shape (we consume)      | Status codes                          | Business rules / notes                                                                                                                                     | Used by (our API) | Verification |
+|-----------------------|-------------------------------|------------------------|------|-----------------------------------------------|-------------------------------------------|-----------------------------------------|---------------------|----------------------------------|---------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|--------------|
+| SOP-Orders Duplicate  | PostSOPOrdersDuplicate        | /sop_orders_duplicate  | POST | Bearer, X-Site, X-Company, **Idempotency-Key**| **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: POST { source_sop_order_id } | copy options (dates, references, lines) | —                   | id, document_no of new order     | 201, 400/401/403/404/409/429/5xx      | Treat as idempotent create; store key/resource=request hash; on duplicate return original created id; mirror ExternalKey to spare_text_1 if provided.        | Admin / bulk      | (verified: SOP page – “SOP-Orders Duplicate”). :contentReference[oaicite:9]{index=9} |
+*/
+
+/// <summary>
+/// ======================
+/// SOP — SOP-Order Lines
+/// ======================
+/// </summary>
+/*
+| Tag            | Operation name / operationId      | Path                                              | Verb | Auth & Headers           | Required fields (minimum)     | Optional fields (likely used) | Query params / OData                         | Response shape (we consume)                                        | Status codes                         | Business rules / notes                                                                                      | Used by (our API)                   | Verification |
+|----------------|-----------------------------------|---------------------------------------------------|------|--------------------------|-------------------------------|--------------------------------|----------------------------------------------|--------------------------------------------------------------------|--------------------------------------|--------------------------------------------------------------------------------------------------------------|-------------------------------------|--------------|
+| SOP-Order Lines| GetSOPOrderLinesForSOPOrder       | /sop_orders/{sopOrderId}/sop_order_lines          | GET  | Bearer, X-Site, X-Company| sopOrderId (path)             | —                              | $filter,$orderby,$top(≤100),$skip,$count     | id, sop_order_id, line_number, line_quantity, selling_unit_price, line_total_value, spare_text_1          | 200, 400/401/403/404/429/5xx         | Use for header totals/checks; enforce $top cap for paging.                                                  | GET /api/invoices/{ref}/status      | (verified: SOP page – “SOP-Order Lines”). :contentReference[oaicite:10]{index=10} |
+| SOP-Order Lines| GetSOPOrderLineForSOPOrder        | /sop_orders/{sopOrderId}/sop_order_lines/{Id}     | GET  | Bearer, X-Site, X-Company| sopOrderId, Id (path)         | —                              | —                                            | id, per-line quantities/prices/status                               | 200, 404, 400/401/403/5xx            | Drill specific line status for reconciliation.                                                              | Status helper                        | (verified: SOP page – “SOP-Order Lines”). :contentReference[oaicite:11]{index=11} |
+| SOP-Order Lines| GetSOPOrderline                   | /sop_order_lines/{Id}                              | GET  | Bearer, X-Site, X-Company| Id (path)                      | —                              | —                                            | id, sop_order_id, fields as above                                     | 200, 404, 400/401/403/5xx            | Global read by id (outside order scope).                                                                    | Admin/Audits                         | (verified: SOP page – “SOP-Order Lines”). :contentReference[oaicite:12]{index=12} |
+*/
+
+/// <summary>
+/// ======================
+/// SOP — SOP-Order Line Views
+/// ======================
+/// </summary>
+/*
+| Tag                   | Operation name / operationId | Path                     | Verb | Auth & Headers          | Required fields | Optional fields | Query params / OData                         | Response shape (we consume)                               | Status codes                     | Business rules / notes                                  | Used by (our API)             | Verification |
+|-----------------------|-------------------------------|--------------------------|------|-------------------------|-----------------|-----------------|----------------------------------------------|-----------------------------------------------------------|----------------------------------|----------------------------------------------------------|-------------------------------|--------------|
+| SOP-Order Line Views  | GetSOPOrderLineViews          | /sop_order_line_views    | GET  | Bearer, X-Site, X-Company| —               | —               | $filter,$orderby,$top(≤100),$skip,$count     | view projection: sop_order_id, product, qty, values       | 200, 400/401/403/429/5xx         | Read-only; ideal for analytics/exports.                 | Reporting/exports              | (verified: SOP page – “SOP-Order Line Views”). :contentReference[oaicite:13]{index=13} |
+*/
+
+/// <summary>
+/// ======================
+/// SOP — SOP-Order Entry Types
+/// ======================
+/// </summary>
+/*
+| Tag                   | Operation name / operationId | Path                    | Verb | Auth & Headers           | Required | Optional | Query params / OData                     | Response shape (we consume)         | Status codes                     | Business rules / notes                           | Used by (our API) | Verification |
+|-----------------------|-------------------------------|-------------------------|------|--------------------------|----------|----------|------------------------------------------|-------------------------------------|----------------------------------|---------------------------------------------------|-------------------|--------------|
+| SOP-Order Entry Types | GetSOPOrderEntryTypes         | /sop_order_entry_types  | GET  | Bearer, X-Site, X-Company | —        | —        | $filter,$orderby,$top(≤100),$skip,$count | id, name/description                | 200, 400/401/403/429/5xx         | Cache client-side as lookup.                      | UI lookups        | (verified: SOP page – “SOP-Order Entry Types”). :contentReference[oaicite:14]{index=14} |
+*/
+
+/// <summary>
+/// ======================
+/// SOP — SOP-Allocation Line Views
+/// ======================
+/// </summary>
+/*
+| Tag                      | Operation name / operationId | Path                        | Verb | Auth & Headers           | Required | Optional | Query params / OData                         | Response shape (we consume)                  | Status codes                     | Business rules / notes                                  | Used by (our API)                 | Verification |
+|--------------------------|-------------------------------|-----------------------------|------|--------------------------|----------|----------|----------------------------------------------|----------------------------------------------|----------------------------------|----------------------------------------------------------|-----------------------------------|--------------|
+| SOP-Allocation Line Views| GetSOPAllocationLineViews     | /sop_allocation_line_views  | GET  | Bearer, X-Site, X-Company | —        | —        | $filter,$orderby,$top(≤100),$skip,$count     | allocation per order line (qty/values/status) | 200, 400/401/403/429/5xx         | Feed for allocation-aware status calculations.         | GET /api/invoices/{ref}/status    | (verified: SOP page – “SOP-Allocation Line Views”). :contentReference[oaicite:15]{index=15} |
+*/
+
+/// <summary>
+/// ======================
+/// SOP — Lookup-SOP-Orders
+/// ======================
+/// </summary>
+/*
+| Tag                | Operation name / operationId | Path                | Verb | Auth & Headers          | Required | Optional | Query params / OData                         | Response shape (we consume)             | Status codes                     | Business rules / notes                                  | Used by (our API) | Verification |
+|--------------------|-------------------------------|---------------------|------|-------------------------|----------|----------|----------------------------------------------|-----------------------------------------|----------------------------------|----------------------------------------------------------|-------------------|--------------|
+| Lookup-SOP-Orders  | GetLookupSOPOrders            | /lookup_sop_orders  | GET  | Bearer, X-Site, X-Company| —        | —        | $filter,$orderby,$top(≤100),$skip,$count     | lightweight: id, document_no, references | 200, 400/401/403/429/5xx         | For pickers/search; cap $top.                           | Admin/search       | (verified: SOP page – “Lookup-SOP-Orders”). :contentReference[oaicite:16]{index=16} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Transaction Enquiry Views
+/// ======================
+/// </summary>
+/*
+| Tag                              | Operation name / operationId                 | Path                                         | Verb | Auth & Headers          | Required fields | Optional fields | Query params / OData                         | Response shape (we consume)                                             | Status codes                     | Business rules / notes                                              | Used by (our API)                  | Verification |
+|----------------------------------|----------------------------------------------|----------------------------------------------|------|-------------------------|-----------------|-----------------|----------------------------------------------|-------------------------------------------------------------------------|----------------------------------|---------------------------------------------------------------------|------------------------------------|--------------|
+| Sales-Transaction Enquiry Views  | GetSalesTransactionEnquiryViews              | /sales_transaction_enquiry_views              | GET  | Bearer, X-Site, X-Company| —               | date/status     | $filter,$orderby,$top(≤100),$skip,$count     | enquiry projection of sales ledger transactions                         | 200, 400/401/403/429/5xx         | Reporting dashboards                                                 | Reporting                           | (verified: Sales page – “Sales-Transaction Enquiry Views”). :contentReference[oaicite:17]{index=17} |
+| Sales-Transaction Enquiry Views  | GetSalesTransactionEnquiryView               | /sales_transaction_enquiry_views/{Id}         | GET  | Bearer, X-Site, X-Company| Id (path)       | —               | —                                            | single enquiry projection                                              | 200, 404, 400/401/403/5xx         | Drill-down                                                          | Reporting                           | (verified: Sales page – “Sales-Transaction Enquiry Views”). :contentReference[oaicite:18]{index=18} |
+| Sales-Transaction Enquiry Views  | GetSalesTransactionsEnquiryViewsForCustomer  | /customers/{customerId}/sales_transaction_enquiry_views | GET | Bearer, X-Site, X-Company| customerId      | date filters    | $filter,$orderby,$top(≤100),$skip,$count     | per-customer enquiry list                                              | 200, 400/401/403/404/429/5xx      | Export-friendly; cap $top                                           | Exports                              | (verified: Sales page – “Sales-Transaction Enquiry Views”). :contentReference[oaicite:19]{index=19} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Transaction Views
+/// ======================
+/// </summary>
+/*
+| Tag                     | Operation name / operationId | Path                      | Verb | Auth & Headers           | Required | Optional | Query params / OData                         | Response shape (we consume)                                                                                     | Status codes                     | Business rules / notes                                       | Used by (our API)                 | Verification |
+|-------------------------|-------------------------------|---------------------------|------|--------------------------|----------|----------|----------------------------------------------|---------------------------------------------------------------------------------------------------------------|----------------------------------|---------------------------------------------------------------|-----------------------------------|--------------|
+| Sales-Transaction Views | GetSalesTransactionViews      | /sales_transaction_views  | GET  | Bearer, X-Site, X-Company | —        | date     | $filter,$orderby,$top(≤100),$skip,$count     | posted_customer_transaction_id, reference, document_gross_value, document_allocated_value, document_outstanding_value, dates | 200, 400/401/403/429/5xx         | **Primary source** for invoice status maths.                 | GET /api/invoices/{ref}/status     | (verified: Sales page – “Sales-Transaction Views”). :contentReference[oaicite:20]{index=20} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Receipts
+/// ======================
+/// </summary>
+/*
+| Tag            | Operation name / operationId | Path             | Verb | Auth & Headers                                 | Required fields (minimum)                         | Optional fields (likely used) | Query params / OData | Response shape (we consume) | Status codes                          | Business rules / notes                                                                                      | Used by (our API) | Verification |
+|----------------|-------------------------------|------------------|------|------------------------------------------------|---------------------------------------------------|-------------------------------|---------------------|-----------------------------|---------------------------------------|--------------------------------------------------------------------------------------------------------------|-------------------|--------------|
+| Sales-Receipts | PostSalesReceipt              | /sales_receipts  | POST | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: { customer_id, amount, reference } | bank/date narrative           | —                   | urn (created receipt URN)   | 201, 400/401/403/409/429/5xx          | Idempotent create; store key/resource=request hash; on 409 return existing receipt; use in later allocations. | Reconciliation    | (verified: Sales page – “Sales-Receipts”). :contentReference[oaicite:21]{index=21} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Posted Transactions
+/// ======================
+/// </summary>
+/*
+| Tag                      | Operation name / operationId            | Path                                         | Verb | Auth & Headers           | Required | Optional | Query params / OData                         | Response shape (we consume)                                                       | Status codes                     | Business rules / notes                                     | Used by (our API)                 | Verification |
+|--------------------------|-----------------------------------------|----------------------------------------------|------|--------------------------|----------|----------|----------------------------------------------|-----------------------------------------------------------------------------------|----------------------------------|-------------------------------------------------------------|-----------------------------------|--------------|
+| Sales-Posted Transactions| GetSalesPostedTransactions              | /sales_posted_transactions                    | GET  | Bearer, X-Site, X-Company | —        | date     | $filter,$orderby,$top(≤100),$skip,$count     | id, reference, transaction_date, document_gross_value, document_allocated_value    | 200, 400/401/403/429/5xx         | Combine with allocations to compute outstanding.            | GET /api/invoices/{ref}/status     | (verified: Sales page – “Sales-Posted Transactions”). :contentReference[oaicite:22]{index=22} |
+| Sales-Posted Transactions| GetSalesPostedTransaction               | /sales_posted_transactions/{Id}               | GET  | Bearer, X-Site, X-Company | Id       | —        | —                                            | as above (single)                                                                  | 200, 404, 400/401/403/5xx        | Drill-down                                                    | Status helper                      | (verified: Sales page – “Sales-Posted Transactions”). :contentReference[oaicite:23]{index=23} |
+| Sales-Posted Transactions| GetSalesPostedTransactionsForCustomer   | /customers/{customerId}/sales_posted_transactions | GET| Bearer, X-Site, X-Company | customerId| date     | $filter,$orderby,$top(≤100),$skip,$count     | list filtered by customer                                                          | 200, 400/401/403/404/429/5xx     | Export-friendly; cap $top.                                   | Exports                            | (verified: Sales page – “Sales-Posted Transactions”). :contentReference[oaicite:24]{index=24} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Payments
+/// ======================
+/// </summary>
+/*
+| Tag            | Operation name / operationId | Path            | Verb | Auth & Headers                                 | Required fields (minimum)                         | Optional fields (likely used) | Query params / OData | Response shape (we consume) | Status codes                          | Business rules / notes                                                                                      | Used by (our API) | Verification |
+|----------------|-------------------------------|-----------------|------|------------------------------------------------|---------------------------------------------------|-------------------------------|---------------------|-----------------------------|---------------------------------------|--------------------------------------------------------------------------------------------------------------|-------------------|--------------|
+| Sales-Payments | PostSalesPayment              | /sales_payments | POST | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: { customer_id, amount, reference } | bank/date narrative           | —                   | urn or id (per API)         | 201, 400/401/403/409/429/5xx          | Idempotent create; store key/resource=request hash; on 409 return created payment.                           | Reconciliation    | (verified: Sales page – “Sales-Payments”). :contentReference[oaicite:25]{index=25} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Invoices
+/// ======================
+/// </summary>
+/*
+| Tag            | Operation name / operationId | Path                | Verb | Auth & Headers                                 | Required fields (minimum)                          | Optional fields (likely used) | Query params / OData | Response shape (we consume)            | Status codes                          | Business rules / notes                                                                                 | Used by (our API) | Verification |
+|----------------|-------------------------------|---------------------|------|------------------------------------------------|----------------------------------------------------|-------------------------------|---------------------|----------------------------------------|---------------------------------------|---------------------------------------------------------------------------------------------------------|-------------------|--------------|
+| Sales-Invoices | PostSalesInvoice              | /sales_invoices     | POST | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: POST minimal invoice body. | customer refs, dates            | —                   | id (invoice), totals                    | 201, 400/401/403/409/429/5xx          | Creation-side only on this tag; reading is via views/posted transactions.                               | (Cross-check only) | (verified: Sales page – “Sales-Invoices”). :contentReference[oaicite:26]{index=26} |
+| Sales-Invoices | PostSalesInvoicesNew          | /sales_invoices_new | POST | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema** (defaults)                                 | reference                       | —                   | id, totals                                | 201, 400/401/403/409/429/5xx          | Defaulted invoice creation variant; same idempotency handling.                                          | (Optional)         | (verified: Sales page – “Sales-Invoices”). :contentReference[oaicite:27]{index=27} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Historical Transactions
+/// ======================
+/// </summary>
+/*
+| Tag                          | Operation name / operationId            | Path                                             | Verb | Auth & Headers           | Required | Optional | Query params / OData                         | Response shape (we consume)                     | Status codes                     | Business rules / notes                          | Used by (our API) | Verification |
+|------------------------------|-----------------------------------------|--------------------------------------------------|------|--------------------------|----------|----------|----------------------------------------------|-----------------------------------------------|----------------------------------|--------------------------------------------------|-------------------|--------------|
+| Sales-Historical Transactions| GetSalesHistoricalTransactions          | /sales_historical_transactions                    | GET  | Bearer, X-Site, X-Company | —        | date     | $filter,$orderby,$top(≤100),$skip,$count     | historical projection (amounts/dates/refs)     | 200, 400/401/403/429/5xx         | Used for aged analysis and audits.              | Reporting         | (verified: Sales page – “Sales-Historical Transactions”). :contentReference[oaicite:28]{index=28} |
+| Sales-Historical Transactions| GetSalesHistoricalTransaction           | /sales_historical_transactions/{Id}               | GET  | Bearer, X-Site, X-Company | Id       | —        | —                                            | single historical transaction                    | 200, 404, 400/401/403/5xx        | Drill-down                                      | Audits            | (verified: Sales page – “Sales-Historical Transactions”). :contentReference[oaicite:29]{index=29} |
+| Sales-Historical Transactions| GetSalesHistoricalTransactionsForCustomer| /customers/{customerId}/sales_historical_transactions | GET | Bearer, X-Site, X-Company | customerId| date     | $filter,$orderby,$top(≤100),$skip,$count     | per-customer historical list                    | 200, 400/401/403/404/429/5xx     | Export-friendly; cap $top.                       | Exports           | (verified: Sales page – “Sales-Historical Transactions”). :contentReference[oaicite:30]{index=30} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Credit Notes
+/// ======================
+/// </summary>
+/*
+| Tag               | Operation name / operationId | Path                   | Verb | Auth & Headers                                 | Required fields (minimum)                          | Optional fields (likely used) | Query params / OData | Response shape (we consume) | Status codes                          | Business rules / notes                                                                                   | Used by (our API) | Verification |
+|-------------------|-------------------------------|------------------------|------|------------------------------------------------|----------------------------------------------------|-------------------------------|---------------------|-----------------------------|---------------------------------------|-----------------------------------------------------------------------------------------------------------|-------------------|--------------|
+| Sales-Credit Notes| PostSalesCreditNote          | /sales_credit_notes    | POST | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: POST minimal credit-note body (customer + lines). | references, dates              | —                   | id, totals                   | 201, 400/401/403/409/429/5xx          | Treat as idempotent create; mirror ExternalKey to spare_text_1 if present in model.                      | Returns/adjustment | (verified: Sales page – “Sales-Credit Notes”). :contentReference[oaicite:31]{index=31} |
+| Sales-Credit Notes| PostSalesCreditNotesNew      | /sales_credit_notes_new| POST | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema** (defaults)                                 | reference                      | —                   | id, totals                   | 201, 400/401/403/409/429/5xx          | Defaulting variant; same idempotency handling.                                                           | (Optional)         | (verified: Sales page – “Sales-Credit Notes”). :contentReference[oaicite:32]{index=32} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Sales-Allocations
+/// ======================
+/// </summary>
+/*
+| Tag              | Operation name / operationId | Path                | Verb | Auth & Headers                                 | Required fields (minimum)                                      | Optional fields (likely used) | Query params / OData | Response shape (we consume) | Status codes                          | Business rules / notes                                                                                     | Used by (our API)                  | Verification |
+|------------------|-------------------------------|---------------------|------|------------------------------------------------|----------------------------------------------------------------|-------------------------------|---------------------|-----------------------------|---------------------------------------|-------------------------------------------------------------------------------------------------------------|------------------------------------|--------------|
+| Sales-Allocations| PostSalesAllocation          | /sales_allocations  | POST | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: { from_transaction_id, to_transaction_id, amount } | narrative                      | —                   | id or ack                   | 201, 400/401/403/409/429/5xx          | Creates links between receipts/payments and invoices; idempotent by our key + payload hash.               | GET /api/invoices/{ref}/status (math) | (verified: Sales page – “Sales-Allocations”). :contentReference[oaicite:33]{index=33} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Customer-Contacts
+/// ======================
+/// </summary>
+/*
+| Tag               | Operation name / operationId            | Path                                           | Verb   | Auth & Headers          | Required fields (minimum)              | Optional fields (likely used) | Query params / OData                         | Response shape (we consume)                 | Status codes                          | Business rules / notes                                                           | Used by (our API) | Verification |
+|-------------------|-----------------------------------------|------------------------------------------------|--------|-------------------------|----------------------------------------|-------------------------------|----------------------------------------------|--------------------------------------------|---------------------------------------|-----------------------------------------------------------------------------------|-------------------|--------------|
+| Customer-Contacts | GetCustomerContact                      | /customer_contacts                              | GET    | Bearer, X-Site, X-Company| —                                      | customer filters              | $filter,$orderby,$top(≤100),$skip,$count     | list of contacts (id, names, roles, customer_id) | 200, 400/401/403/429/5xx               | Cap $top; enrich via roles/emails if needed.                                      | Customer tools     | (verified: Sales page – “Customer-Contacts”). :contentReference[oaicite:34]{index=34} |
+| Customer-Contacts | GetCustomerContacts                     | /customer_contacts/{Id}                         | GET    | Bearer, X-Site, X-Company| Id (path)                               | —                             | —                                            | single contact                                   | 200, 404, 400/401/403/5xx              | Drill-down.                                                                       | Customer tools     | (verified: Sales page – “Customer-Contacts”). :contentReference[oaicite:35]{index=35} |
+| Customer-Contacts | GetCustomerContactsForCustomer          | /customers/{customerId}/customer_contacts       | GET    | Bearer, X-Site, X-Company| customerId (path)                       | filters                      | $filter,$orderby,$top(≤100),$skip,$count     | list for a customer                            | 200, 400/401/403/404/429/5xx           | Scoped listing; cap $top.                                                         | Customer tools     | (verified: Sales page – “Customer-Contacts”). :contentReference[oaicite:36]{index=36} |
+| Customer-Contacts | PostCustomerContactForCustomer          | /customers/{customerId}/customer_contacts       | POST   | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: POST minimal contact body. | phones/emails               | —                                            | id                                            | 201, 400/401/403/409/429/5xx           | Treat as idempotent create using our key/payload hash.                             | Customer tools     | (verified: Sales page – “Customer-Contacts”). :contentReference[oaicite:37]{index=37} |
+| Customer-Contacts | PutCustomerContact                      | /customer_contacts/{Id}                         | PUT    | Bearer, X-Site, X-Company| Id (path)                               | contact fields                | —                                            | id                                            | 200, 400/401/403/404/409/5xx           | —                                                                                 | Maintenance        | (verified: Sales page – “Customer-Contacts”). :contentReference[oaicite:38]{index=38} |
+| Customer-Contacts | DeleteCustomerContact                   | /customer_contacts/{Id}                         | DELETE | Bearer, X-Site, X-Company| Id (path)                               | —                             | —                                            | —                                             | 204, 400/401/403/404/409/5xx           | —                                                                                 | Admin              | (verified: Sales page – “Customer-Contacts”). :contentReference[oaicite:39]{index=39} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Customer-Views
+/// ======================
+/// </summary>
+/*
+| Tag            | Operation name / operationId | Path            | Verb | Auth & Headers           | Required | Optional | Query params / OData                         | Response shape (we consume)                  | Status codes                     | Business rules / notes                      | Used by (our API)           | Verification |
+|----------------|-------------------------------|-----------------|------|--------------------------|----------|----------|----------------------------------------------|----------------------------------------------|----------------------------------|--------------------------------------------|-----------------------------|--------------|
+| Customer-Views | GetCustomerViews              | /customer_views | GET  | Bearer, X-Site, X-Company | —        | —        | $filter,$orderby,$top(≤100),$skip,$count     | export projection (id, reference, name, …)   | 200, 400/401/403/429/5xx         | Use for bulk export; cap $top.             | GET /api/customer-views/export | (verified: Sales page – “Customer-Views”). :contentReference[oaicite:40]{index=40} |
+*/
+
+/// <summary>
+/// ======================
+/// SALES — Customers
+/// ======================
+/// </summary>
+/*
+| Tag       | Operation name / operationId | Path             | Verb  | Auth & Headers                                 | Required fields (minimum)                                 | Optional fields (likely used)             | Query params / OData                         | Response shape (we consume)                                                                                                   | Status codes                          | Business rules / notes                                                                                                   | Used by (our API)                    | Verification |
+|-----------|-------------------------------|------------------|-------|------------------------------------------------|-----------------------------------------------------------|-------------------------------------------|----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|--------------------------------------|--------------|
+| Customers | GetCustomers                  | /customers       | GET   | Bearer, X-Site, X-Company                      | —                                                         | name/reference filters                    | $filter,$orderby,$top(≤100),$skip,$count     | id, reference, name, main_address{...}, date_time_created, date_time_updated                                               | 200, 400/401/403/429/5xx             | Hard-cap $top ≤ 100; UTC in date filters.                                                                                   | **GET /api/customers**               | (verified: Sales page – “Customers”). :contentReference[oaicite:41]{index=41} |
+| Customers | GetCustomer                    | /customers/{Id}  | GET   | Bearer, X-Site, X-Company                      | Id (path)                                                 | —                                         | —                                            | full customer record                                                                                                         | 200, 404, 400/401/403/5xx            | Drill-down.                                                                                                                 | GET /api/customers/{code} (via filter) | (verified: Sales page – “Customers”). :contentReference[oaicite:42]{index=42} |
+| Customers | PostCustomer                   | /customers       | POST  | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema.** Minimal repro: POST minimal customer { reference, name, … }. | spare_text_1 (ExternalKey mirror)         | —                                            | id, reference                                                                                                               | 201, 400/401/403/409/429/5xx         | Mirror ExternalKey → spare_text_1; idempotent create by key+payload hash.                                                  | **POST /api/customers**              | (verified: Sales page – “Customers”). :contentReference[oaicite:43]{index=43} |
+| Customers | PutCustomer                    | /customers/{Id}  | PUT   | Bearer, X-Site, X-Company                      | Id (path)                                                 | address/contact fields                    | —                                            | id                                                                                                                          | 200, 400/401/403/404/409/5xx         | —                                                                                                                           | Maintenance                           | (verified: Sales page – “Customers”). :contentReference[oaicite:44]{index=44} |
+| Customers | DeleteCustomer                 | /customers/{Id}  | DELETE| Bearer, X-Site, X-Company                      | Id (path)                                                 | —                                         | —                                            | —                                                                                                                           | 204, 400/401/403/404/409/5xx         | Only deletable subject to ledger constraints.                                                                               | Admin                                 | (verified: Sales page – “Customers”). :contentReference[oaicite:45]{index=45} |
+| Customers | PostCustomersNew               | /customers_new   | POST  | Bearer, X-Site, X-Company, **Idempotency-Key** | **NOT SHOWN IN TAG PAGE – request schema** (defaults)     | spare_text_1                               | —                                            | id, reference                                                                                                               | 201, 400/401/403/409/429/5xx         | Defaulting variant; treat idempotently.                                                                                    | (Optional)                            | (verified: Sales page – “Customers”). :contentReference[oaicite:46]{index=46} |
+*/
+
+
+
+
+/* =============================================================================
+Delta Addendum (tracked DTO/entity changes — unchanged + confirmed from samples)
+============================================================================= */
+/*
+• ExternalKey NVARCHAR(100) NULL on Customers and Invoices (and future Orders table if added);
+  mirror to spare_text_1 on /customers, /sop_orders, /sop_order_lines.
+• Likely fields we’ll expose as nullable:
+  - SOP headers: use_header_requested_date (bool?), use_header_promised_date (bool?), has_alerts (bool?)
+  - SOP lines: has_alerts (bool?), country_of_origin_code (string?), country_of_origin_name (string?)
+• Idempotency store table (IdempotencyKeys): 
+  Id BIGINT IDENTITY, KeyHash NVARCHAR(64), Resource NVARCHAR(64), RequestHash NVARCHAR(64),
+  ResultSageId BIGINT NULL, CreatedUtc DATETIME2(7), 
+  UNIQUE(KeyHash, Resource), TTL purge after 90 days.
+*/
+
+/* =============================================================================
+Compat flag (confirmed)
+============================================================================= */
+/*
+Feature: SageApi:UseLegacySalesOrdersPath (bool, default false)
+Behaviour: when true → create orders via legacy sales/orders; else via /sop_orders
+Rollout: DEV test → UAT (flag off) → remove after tenants confirm sop_* in PROD
+*/
