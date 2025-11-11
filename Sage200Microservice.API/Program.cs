@@ -18,6 +18,7 @@ using Sage200Microservice.API.Logging;
 using Sage200Microservice.API.Metrics;
 using Sage200Microservice.API.Middleware;
 using Sage200Microservice.API.Monitoring;
+using Sage200Microservice.API.Security;
 using Sage200Microservice.API.Services;
 using Sage200Microservice.API.Startup;
 using Sage200Microservice.API.Tracing;
@@ -359,7 +360,8 @@ internal static class ProgramBootstrap
         builder.Services.AddSingleton<IFieldEncryptor, AesGcmFieldEncryptor>();
 
         builder.Services.AddRetryDlqParity();
-        builder.Services.AddSingleton<IKafkaProducer, ConfluentKafkaProducer>();
+        builder.Services.AddKafkaProducer(builder.Configuration);
+        builder.Services.AddSingleton<Sage200Microservice.Services.Messaging.Publishing.IKafkaProducer, Sage200Microservice.Services.Messaging.Publishing.ConfluentKafkaProducer>();
     }
 
     /// <summary>
@@ -390,17 +392,15 @@ internal static class ProgramBootstrap
             KeepAlivePingTimeout = TimeSpan.FromSeconds(30)
         });
 
-        // Typed client (ISageApiClient): order matters: Correlation → Routing → Auth → Logging → Sockets
+        // Typed client (ISageApiClient): Correlation → Routing → Auth → Logging → Sockets
         builder.Services.AddHttpClient<ISageApiClient, SageApiClient>((sp, http) =>
         {
             var cfg = sp.GetRequiredService<IOptions<SageApiSettings>>().Value;
-            http.BaseAddress = new Uri(
-                cfg.BaseUrl.EndsWith("/") ? cfg.BaseUrl : cfg.BaseUrl + "/",
-                UriKind.Absolute);
+            http.BaseAddress = new Uri(cfg.BaseUrl.EndsWith("/") ? cfg.BaseUrl : cfg.BaseUrl + "/", UriKind.Absolute);
         })
-        .AddHttpMessageHandler<Sage200Microservice.Services.Http.CorrelationIdHandler>() // outer
-        .AddHttpMessageHandler<SageRoutingHeaderHandler>()                                // inject X-* headers
-        .AddHttpMessageHandler<SageAuthDelegatingHandler>()                               // add Bearer
+        .AddHttpMessageHandler<Sage200Microservice.Services.Http.CorrelationIdHandler>() // outermost
+        .AddHttpMessageHandler<SageRoutingHeaderHandler>()                                // X-Site/X-Company
+        .AddHttpMessageHandler<SageAuthDelegatingHandler>()                               // Bearer
         .AddHttpMessageHandler<Sage200Microservice.Services.Http.SageApiLoggingHandler>() // log FINAL request
         .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
         {
@@ -438,32 +438,39 @@ internal static class ProgramBootstrap
     /// </summary>
     public static void ConfigureAuth(WebApplicationBuilder builder)
     {
+        // Bind Sage settings (we rely on AdminApiKeys & EnableFaultInjection)
+        builder.Services.Configure<SageApiSettings>(builder.Configuration.GetSection("Sage"));
+
         var isDev = builder.Environment.IsDevelopment();
 
-        // Authentication remains middleware-driven (API key or JWT etc.)
-        builder.Services.AddAuthentication();
-
-        // Lightweight claims transformer: map AdminApiKeys → Role: Admin
-        builder.Services.AddTransient<IClaimsTransformation, AdminKeyToRoleTransformer>();
+        // DEFAULT SCHEME: header-based API key
+        builder.Services
+            .AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = HeaderApiKeyAuthHandler.Scheme;
+                options.DefaultChallengeScheme = HeaderApiKeyAuthHandler.Scheme;
+            })
+            .AddScheme<AuthenticationSchemeOptions, HeaderApiKeyAuthHandler>(HeaderApiKeyAuthHandler.Scheme, _ => { });
 
         builder.Services.AddAuthorization(options =>
         {
-            // Your existing "ApiUser" policy: dev = allow, non-dev = require X-Api-Key or authenticated user
+            // Your existing policy: dev allow; non-dev require api key or authenticated user
             options.AddPolicy("ApiUser", policy =>
                 policy.RequireAssertion(ctx =>
                 {
                     if (isDev) return true;
 
+                    // Either header present OR user is authenticated by any scheme
                     var http = ctx.Resource as HttpContext;
                     if (http != null && http.Request.Headers.ContainsKey("X-Api-Key")) return true;
 
                     return ctx.User?.Identity?.IsAuthenticated == true;
                 }));
 
-            // (Optional) Fallback policy: require auth by default
-            options.FallbackPolicy = new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build();
+            // No global fallback that forces every route to authorize; we’ll mark endpoints explicitly
+            // If you insist on a fallback, you must mark specific endpoints AllowAnonymous (see step 3)
+            // options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            //     .RequireAuthenticatedUser().Build();
         });
     }
 
@@ -631,6 +638,8 @@ internal static class ProgramBootstrap
 
         // Default scraping path: /metrics
         app.MapPrometheusScrapingEndpoint(); // exposes GET /metrics
+
+        app.MapHealthChecks("/health").AllowAnonymous();
 
         app.MapGet("/business-dashboard", ctx =>
         {

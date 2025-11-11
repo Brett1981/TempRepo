@@ -182,8 +182,11 @@ namespace Sage200Microservice.Services.Implementations
 
                     if (resp.StatusCode == System.Net.HttpStatusCode.Unauthorized && attempt == 1)
                     {
-                        _logger.LogWarning("401 from {Endpoint}; will rely on AuthHandler refresh + retry path already executed.");
-                        resp.EnsureSuccessStatusCode(); // throw to bubble 401 (we don't retry here; handler already did)
+                        var www = string.Join("; ", resp.Headers.WwwAuthenticate);
+                        var peek = await resp.Content.ReadAsStringAsync(ct);
+                        _logger.LogWarning("401 from {Endpoint}. WWW-Authenticate: {Auth}. Body: {Body}",
+                            endpoint, www, peek.Length > 300 ? peek[..300] + "…" : peek);
+                        resp.EnsureSuccessStatusCode();
                     }
 
                     if ((int)resp.StatusCode == 429 ||

@@ -1,13 +1,14 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc;
+using Sage200Microservice.API.DTOs;
+using Sage200Microservice.API.Middleware;
+using Sage200Microservice.Data;
+using Sage200Microservice.Data.Models;
+using Sage200Microservice.Data.Repositories;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Sage200Microservice.API.DTOs;
-using Sage200Microservice.Data;
-using Sage200Microservice.Data.Models;
-using Sage200Microservice.Data.Repositories;
 
 namespace Sage200Microservice.API.Controllers
 {
@@ -16,6 +17,7 @@ namespace Sage200Microservice.API.Controllers
     /// </summary>
     [ApiController]
     [Route("api/admin/links")]
+    [SkipAudit]
     [Produces("application/json")]
     public sealed class AdminLinksController : ControllerBase
     {

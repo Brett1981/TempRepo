@@ -35,6 +35,14 @@ namespace Sage200Microservice.API.Middleware
                 return;
             }
 
+            // NEW: Skip when endpoint is explicitly marked with [SkipAudit]
+            var ep = context.GetEndpoint();
+            if (ep?.Metadata?.GetMetadata<SkipAuditAttribute>() is not null)
+            {
+                await _next(context);
+                return;
+            }
+
             // Skip for excluded endpoints
             var endpoint = context.Request.Path.Value ?? string.Empty;
             foreach (var excludedEndpoint in _settings.ExcludedEndpoints)

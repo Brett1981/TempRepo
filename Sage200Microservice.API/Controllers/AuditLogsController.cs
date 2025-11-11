@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Sage200Microservice.API.DTOs;
+using Sage200Microservice.API.Middleware;
 using Sage200Microservice.Data.Models;
 using Sage200Microservice.Services.Interfaces;
 
@@ -30,6 +31,7 @@ namespace Sage200Microservice.API.Controllers
         [HttpGet]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [SkipAudit]
         public async Task<ActionResult<PaginatedResponse<AuditLogResponseDto>>> Search(
             [FromQuery] AuditLogSearchRequestDto request,
             CancellationToken ct)
@@ -143,6 +145,7 @@ namespace Sage200Microservice.API.Controllers
         [HttpGet("{id:long}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [SkipAudit]
         public async Task<ActionResult<AuditLogResponseDto>> GetById(long id, CancellationToken ct)
         {
             try
@@ -168,6 +171,7 @@ namespace Sage200Microservice.API.Controllers
         /// </summary>
         [HttpGet("correlation/{correlationId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [SkipAudit]
         public async Task<ActionResult<List<AuditLogResponseDto>>> GetByCorrelationId(string correlationId, CancellationToken ct)
         {
             try
@@ -193,6 +197,7 @@ namespace Sage200Microservice.API.Controllers
         /// </summary>
         [HttpGet("resource/{resource}/{referenceId}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [SkipAudit]
         public async Task<ActionResult<List<AuditLogResponseDto>>> GetByResource(string resource, string referenceId, CancellationToken ct)
         {
             try
@@ -218,6 +223,7 @@ namespace Sage200Microservice.API.Controllers
         /// </summary>
         [HttpGet("statistics")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [SkipAudit]
         public async Task<ActionResult<AuditLogStatisticsResponseDto>> GetStatistics(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
