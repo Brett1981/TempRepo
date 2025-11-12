@@ -72,4 +72,40 @@ public sealed class IdempotencyRecordRepository : IIdempotencyRecordRepository
 
         await _db.SaveChangesAsync(ct).ConfigureAwait(false);
     }
+
+    public async Task UpsertHttpResponseAsync(
+        string idempotencyKey, string? resource,
+        int statusCode, string? contentType, string headersJson, string? body,
+        string? requestHash, DateTime? expiresUtc, CancellationToken ct = default)
+    {
+        var keyHash = HashKeySha512Base64(idempotencyKey);
+        var rec = await _db.IdempotencyRecords.FirstOrDefaultAsync(x => x.KeyHash == keyHash, ct);
+        if (rec is null)
+        {
+            rec = new IdempotencyRecord
+            {
+                KeyHash = keyHash,
+                CreatedUtc = DateTime.UtcNow,
+                Resource = resource,
+                RequestHash = requestHash,
+                ResponseStatusCode = statusCode,
+                ResponseContentType = contentType,
+                ResponseHeaders = headersJson,
+                ResponseBody = body,
+                ExpiresUtc = expiresUtc
+            };
+            _db.IdempotencyRecords.Add(rec);
+        }
+        else if (rec.ResponseStatusCode is null) // first-writer-wins
+        {
+            rec.Resource ??= resource;
+            rec.RequestHash ??= requestHash;
+            rec.ResponseStatusCode = statusCode;
+            rec.ResponseContentType = contentType;
+            rec.ResponseHeaders = headersJson;
+            rec.ResponseBody = body;
+            if (expiresUtc.HasValue) rec.ExpiresUtc = expiresUtc;
+        }
+        await _db.SaveChangesAsync(ct);
+    }
 }

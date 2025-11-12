@@ -506,6 +506,8 @@ internal static class ProgramBootstrap
         builder.Services.AddCorsPolicy(builder.Configuration);
         builder.Services.AddSecurityHeaders(builder.Configuration);
         builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
+        // Idempotency metrics (OTEL wrapper)
+        builder.Services.AddSingleton<Sage200Microservice.API.Middleware.IdempotencyMetrics>();
     }
 
     /// <summary>
@@ -601,6 +603,9 @@ internal static class ProgramBootstrap
         app.UseMiddleware<Sage200Microservice.API.Middleware.IpFilteringMiddleware>();
         app.UseCorsPolicy(app.Configuration);
         app.UseRateLimiting();
+
+        // Global HTTP idempotency (applies to all POSTs; opt-out via [SkipIdempotency])
+        app.UseMiddleware<Sage200Microservice.API.Middleware.IdempotencyMiddleware>();
 
         if (!app.Environment.IsDevelopment())
         {

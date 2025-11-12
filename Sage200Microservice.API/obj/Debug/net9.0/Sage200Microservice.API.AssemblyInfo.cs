@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Sage200Microservice.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b83fa588ee1c36e0dc71b1cd9384c95b5c833d17")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+74c3ce38ed7a0a5b597261a538f6f4bbe20502e6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Sage200Microservice.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Sage200Microservice.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
