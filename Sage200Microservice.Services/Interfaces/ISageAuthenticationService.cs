@@ -1,52 +1,37 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using Sage200Microservice.Services.Implementations;
 
 namespace Sage200Microservice.Services.Interfaces
 {
-    // Keep the existing info DTOs in this namespace so the type aliases in the service are correct.
-    public sealed class AccessTokenInfo
-    {
-        public string? Audience { get; init; }
-        public string? Issuer { get; init; }
-        public string[]? Scopes { get; init; }
-        public string? TenantId { get; init; }
-        public string? ClientAppId { get; init; }
-        public System.DateTimeOffset? ExpiresUtc { get; init; }
-        public long? SecondsToExpiry { get; init; }
-    }
-
-    public sealed class TokenInfo
-    {
-        public System.DateTimeOffset AccessTokenExpiresUtc { get; init; }
-        public bool HasRefreshToken { get; init; }
-    }
-
+    /// <summary>
+    /// Contract for acquiring, refreshing and revoking OAuth tokens for Sage 200.
+    /// </summary>
     public interface ISageAuthenticationService
     {
-        // ------- AuthZ URL builders -------
-        // Simple (no PKCE)
+        /// <summary>Builds the interactive authorization URL.</summary>
         string BuildAuthorizeUrl(string state);
 
-        // PKCE-friendly (backward compatible with controllers that expect it)
-        string BuildAuthorizeUrl(string state, string codeChallenge, string codeChallengeMethod = "S256",
-                                 IDictionary<string, string>? extraQuery = null);
-
-        // ------- Code exchange -------
-        // Simple (no PKCE) — returns (Ok, Error) like your snippet
+        /// <summary>Exchanges the authorization <c>code</c> for tokens and persists them.</summary>
         Task<(bool Ok, string? Error)> ExchangeCodeForTokensAsync(string code, CancellationToken ct = default);
 
-        // PKCE-friendly (commonly void/throws on failure); use whichever your controllers expect
-        Task ExchangeCodeForTokensAsync(string code, string codeVerifier, CancellationToken ct = default);
-
-        // ------- Token access / diagnostics -------
+        /// <summary>Gets a valid access token, refreshing if necessary.</summary>
         Task<string> GetAccessTokenAsync(CancellationToken ct = default);
+
+        /// <summary>Forces a refresh of the access token.</summary>
         Task ForceRefreshAsync(CancellationToken ct = default);
+
+        /// <summary>Returns true when a usable token exists (access or refresh).</summary>
         Task<bool> HasValidTokenAsync(CancellationToken ct = default);
-        Task<bool> HasRefreshTokenAsync(CancellationToken ct = default);
+
+        /// <summary>Returns simple diagnostics about the cached token (or null).</summary>
         Task<TokenInfo?> GetTokenInfoAsync(CancellationToken ct = default);
-        Task<AccessTokenInfo?> GetAccessTokenInfoAsync(CancellationToken ct);
-        Task<bool> RevokeAccessTokenAsync();
+
+        /// <summary>Refreshes the token using the refresh token.</summary>
         Task<string> RefreshAccessTokenAsync(CancellationToken ct = default);
+
+        /// <summary>Revokes the access token remotely and clears the local cache.</summary>
+        Task<bool> RevokeAccessTokenAsync();
     }
+
+
+
 }

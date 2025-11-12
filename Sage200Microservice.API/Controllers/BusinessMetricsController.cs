@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Sage200Microservice.API.Middleware;
 using Sage200Microservice.Data.Repositories;
 
 namespace Sage200Microservice.API.Controllers
@@ -32,7 +31,6 @@ namespace Sage200Microservice.API.Controllers
         /// Gets a summary of business metrics
         /// </summary>
         [HttpGet("summary")]
-        [SkipAudit]
         public async Task<ActionResult<BusinessMetricsSummary>> GetSummary()
         {
             try
@@ -144,7 +142,6 @@ namespace Sage200Microservice.API.Controllers
         /// Gets customer metrics
         /// </summary>
         [HttpGet("customers")]
-        [SkipAudit]
         public async Task<ActionResult<CustomerMetricsDetail>> GetCustomerMetrics()
         {
             try
@@ -186,7 +183,6 @@ namespace Sage200Microservice.API.Controllers
         /// Gets invoice metrics
         /// </summary>
         [HttpGet("invoices")]
-        [SkipAudit]
         public async Task<ActionResult<InvoiceMetricsDetail>> GetInvoiceMetrics()
         {
             try
@@ -244,7 +240,6 @@ namespace Sage200Microservice.API.Controllers
         /// Gets API usage metrics
         /// </summary>
         [HttpGet("api-usage")]
-        [SkipAudit]
         public async Task<ActionResult<ApiUsageMetricsDetail>> GetApiUsageMetrics()
         {
             try

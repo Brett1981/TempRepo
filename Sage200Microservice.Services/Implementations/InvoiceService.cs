@@ -4,7 +4,6 @@ using Sage200Microservice.Data.Models;
 using Sage200Microservice.Data.Repositories;
 using Sage200Microservice.Services.Interfaces;
 using Sage200Microservice.Services.Models;
-using System.Threading;
 
 namespace Sage200Microservice.Services.Implementations
 {
@@ -13,7 +12,7 @@ namespace Sage200Microservice.Services.Implementations
     /// - Creates a sales order in Sage and persists a local invoice row.
     /// - Checks invoice status using a resilient search order:
     ///   sales_transaction_views → sales_invoices → trader_transactions.
-    /// - Treats 400/404 from Sage as "no rows".
+    /// - Treats 400/404 from Sage as "no rows" to avoid noisy error logs.
     /// - Records a status history entry on each check.
     /// </summary>
     public class InvoiceService : IInvoiceService
@@ -35,18 +34,19 @@ namespace Sage200Microservice.Services.Implementations
             _sageApiClient = sageApiClient;
         }
 
+        /// <summary>
+        /// Creates a simple Sales Order in Sage and mirrors it locally as an Invoice record.
+        /// </summary>
         public async Task<(bool Success, string Message, long OrderId, string OrderReference)> CreateSalesOrderInvoiceAsync(
             Invoice invoice,
-            List<OrderLine> lines,
-            CancellationToken ct = default)
+            List<OrderLine> lines)
         {
             try
             {
                 _logger.LogInformation("Creating sales order for customer {CustomerId} with {LineCount} lines",
                     invoice.CustomerId, lines.Count);
 
-                ct.ThrowIfCancellationRequested();
-
+                // Build a minimal Sage Sales Order payload (adjust to match your Sage contract if needed).
                 var sageOrderRequest = new
                 {
                     customer_id = invoice.CustomerId,
@@ -60,10 +60,13 @@ namespace Sage200Microservice.Services.Implementations
                     }).ToArray()
                 };
 
-                // NOTE: ct propagated to HttpClient → Sage
+                // Post to Sage – return as JsonDocument to be defensive about schema.
                 var createdDoc = await _sageApiClient.PostAsync<object, JsonDocument>(
-                    "sop_orders", sageOrderRequest, ct);
+                    "sop_orders",
+                    sageOrderRequest,
+                    CancellationToken.None);
 
+                // Extract id + reference from JSON (handles { value:[{...}] } and single object).
                 var (sageId, orderRef) = ExtractOrderIdentity(createdDoc);
 
                 if (sageId == 0 || string.IsNullOrWhiteSpace(orderRef))
@@ -72,15 +75,16 @@ namespace Sage200Microservice.Services.Implementations
                     return (false, "Sage did not return a valid order id/reference.", 0, string.Empty);
                 }
 
-                // Persist local Invoice (mapped to created Sage order)
+                // Persist local Invoice (mapped to the created Sage order)
                 invoice.SageId = sageId;
                 invoice.InvoiceReference = orderRef;
                 invoice.IsSynced = true;
                 invoice.CreatedAt = invoice.CreatedAt == default ? DateTime.UtcNow : invoice.CreatedAt;
                 invoice.LastCheckedAt = DateTime.UtcNow;
 
-                var savedInvoice = await _invoiceRepository.AddAsync(invoice); // add ct overload if available
+                var savedInvoice = await _invoiceRepository.AddAsync(invoice);
 
+                // Write an initial status history row
                 var statusHistory = new InvoiceStatusHistory
                 {
                     InvoiceReference = orderRef,
@@ -94,9 +98,9 @@ namespace Sage200Microservice.Services.Implementations
                     CorrelationId = System.Diagnostics.Activity.Current?.Id ?? Guid.NewGuid().ToString()
                 };
 
-                await _statusHistoryRepository.AddAsync(statusHistory); // add ct overload if available
+                await _statusHistoryRepository.AddAsync(statusHistory);
 
-                _logger.LogInformation("Sales order created. Ref {Ref}, SageId {Id}, LocalId {LocalId}",
+                _logger.LogInformation("Sales order created successfully. Reference {Ref}, SageId {Id}, LocalId {LocalId}",
                     orderRef, sageId, savedInvoice.Id);
 
                 return (true, "Sales order created successfully", savedInvoice.Id, savedInvoice.InvoiceReference);
@@ -106,10 +110,6 @@ namespace Sage200Microservice.Services.Implementations
                 _logger.LogError(ex, "HTTP error creating sales order for customer {CustomerId}", invoice.CustomerId);
                 return (false, $"HTTP error creating sales order: {ex.Message}", 0, string.Empty);
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                return (false, "Cancelled", 0, string.Empty);
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error creating sales order for customer {CustomerId}", invoice.CustomerId);
@@ -117,30 +117,39 @@ namespace Sage200Microservice.Services.Implementations
             }
         }
 
+        /// <summary>
+        /// Checks the payment/credit status of a referenced invoice using Sage.
+        /// Prefer sales_transaction_views (broad coverage), then fall back to others.
+        /// </summary>
         public async Task<(bool Success, string Message, bool IsPaid, bool IsCredited, decimal OutstandingValue, decimal AllocatedValue, List<SageAllocationHistoryItem> AllocationHistory)>
-            CheckInvoiceStatusAsync(string invoiceReference, CancellationToken ct = default)
+            CheckInvoiceStatusAsync(string invoiceReference)
         {
             try
             {
                 _logger.LogInformation("Checking status of invoice {InvoiceReference}", invoiceReference);
-                ct.ThrowIfCancellationRequested();
 
+                // --- Search Sage across multiple entity sets in priority order ---
                 var eq = EscapeODataString(invoiceReference);
                 var candidates = new[]
                 {
-                    "sales_transaction_views?$top=1",
+                    // Prefer a trivial probe first (also warms the connection on some tenants)
+                    $"sales_transaction_views?$top=1",
+
+                    // Narrow by likely fields — no enum comparison to avoid type issues
                     $"sales_transaction_views?$filter=reference eq '{eq}'&$top=1",
+
+                    // Fallback entity sets (may be disabled on some tenants)
                     $"sales_invoices?$filter=reference eq '{eq}'&$top=1",
                     $"trader_transactions?$filter=trader_reference eq '{eq}'&$top=1"
                 };
-
-                var doc = await TryFirstOkAsync(candidates, ct);
+                var doc = await TryFirstOkAsync(candidates);
                 if (doc is null)
                 {
                     _logger.LogWarning("Invoice '{Ref}' not found or entity sets unavailable on this tenant.", invoiceReference);
                     return (false, "Invoice not found on Sage.", false, false, 0m, 0m, new List<SageAllocationHistoryItem>());
                 }
 
+                // Snapshot essential fields from whatever shape we got back.
                 var snap = MaterializeInvoiceSnapshot(doc);
                 if (snap is null)
                     return (false, "Invoice not found on Sage.", false, false, 0m, 0m, new List<SageAllocationHistoryItem>());
@@ -151,7 +160,7 @@ namespace Sage200Microservice.Services.Implementations
                 var allocated = Math.Max(0m, gross - outstanding);
 
                 // Upsert local invoice
-                var invoice = await _invoiceRepository.GetByReferenceAsync(invoiceReference); // add ct overload if available
+                var invoice = await _invoiceRepository.GetByReferenceAsync(invoiceReference);
                 if (invoice == null)
                 {
                     _logger.LogInformation("Invoice {Ref} not found locally; creating record.", invoiceReference);
@@ -168,16 +177,16 @@ namespace Sage200Microservice.Services.Implementations
                         CreatedBy = "System",
                         IsSynced = true
                     };
-                    await _invoiceRepository.AddAsync(invoice); // add ct overload if available
+                    await _invoiceRepository.AddAsync(invoice);
                 }
                 else
                 {
                     invoice.OutstandingValue = outstanding;
-                    invoice.GrossValue = invoice.GrossValue == 0 ? gross : invoice.GrossValue;
+                    invoice.GrossValue = invoice.GrossValue == 0 ? gross : invoice.GrossValue; // keep if already set
                     invoice.Status = outstanding == 0m ? "Paid" : (outstanding < gross ? "PartiallyPaid" : "Unpaid");
                     invoice.LastCheckedAt = DateTime.UtcNow;
                     invoice.IsSynced = true;
-                    await _invoiceRepository.UpdateAsync(invoice); // add ct overload if available
+                    await _invoiceRepository.UpdateAsync(invoice);
                 }
 
                 // Record history
@@ -193,8 +202,9 @@ namespace Sage200Microservice.Services.Implementations
                     CheckedBy = "System",
                     CorrelationId = System.Diagnostics.Activity.Current?.Id ?? Guid.NewGuid().ToString()
                 };
-                await _statusHistoryRepository.AddAsync(statusHistory); // add ct overload if available
+                await _statusHistoryRepository.AddAsync(statusHistory);
 
+                // If you want allocation history, add a targeted query here (left empty by default).
                 var allocHistory = new List<SageAllocationHistoryItem>();
                 var isPaid = outstanding == 0m;
                 var isCredited = snap.IsCredited ?? false;
@@ -203,12 +213,9 @@ namespace Sage200Microservice.Services.Implementations
             }
             catch (HttpRequestException ex) when ((int?)ex.StatusCode is 400 or 404)
             {
+                // Treat "bad query" or "entity set missing" as not-found, per tenant variability.
                 _logger.LogWarning(ex, "Invoice '{Ref}' not found on Sage due to upstream {Code}.", invoiceReference, ex.StatusCode);
                 return (false, "Invoice not found on Sage.", false, false, 0m, 0m, new List<SageAllocationHistoryItem>());
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                return (false, "Cancelled", false, false, 0m, 0m, new List<SageAllocationHistoryItem>());
             }
             catch (Exception ex)
             {
@@ -217,31 +224,26 @@ namespace Sage200Microservice.Services.Implementations
             }
         }
 
-        public async Task ProcessOutstandingInvoicesAsync(CancellationToken ct = default)
+        /// <summary>
+        /// Processes all locally outstanding invoices and refreshes status from Sage.
+        /// </summary>
+        public async Task ProcessOutstandingInvoicesAsync()
         {
             try
             {
                 _logger.LogInformation("Processing outstanding invoices...");
-                ct.ThrowIfCancellationRequested();
-
-                var outstandingInvoices = await _invoiceRepository.GetOutstandingInvoicesAsync(); // add ct overload if available
+                var outstandingInvoices = await _invoiceRepository.GetOutstandingInvoicesAsync();
                 _logger.LogInformation("Found {Count} outstanding invoices to process", outstandingInvoices.Count().ToString());
 
                 foreach (var invoice in outstandingInvoices)
                 {
-                    ct.ThrowIfCancellationRequested();
-
                     try
                     {
-                        var result = await CheckInvoiceStatusAsync(invoice.InvoiceReference, ct);
+                        var result = await CheckInvoiceStatusAsync(invoice.InvoiceReference);
                         if (!result.Success)
                         {
                             _logger.LogWarning("Status check failed for invoice {Ref}: {Msg}", invoice.InvoiceReference, result.Message);
                         }
-                    }
-                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
-                    {
-                        throw;
                     }
                     catch (Exception ex)
                     {
@@ -250,11 +252,6 @@ namespace Sage200Microservice.Services.Implementations
                 }
 
                 _logger.LogInformation("Finished processing outstanding invoices.");
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                _logger.LogWarning("Outstanding invoices processing was cancelled.");
-                throw;
             }
             catch (Exception ex)
             {
@@ -267,19 +264,24 @@ namespace Sage200Microservice.Services.Implementations
         // Internal helpers
         // ======================================================================
 
-        private async Task<JsonDocument?> TryFirstOkAsync(IEnumerable<string> endpoints, CancellationToken ct)
+        /// <summary>
+        /// Attempts each endpoint in order, returning the first JsonDocument that succeeds with 200.
+        /// 400/404 => treated as "no rows/unsupported" and we try the next candidate.
+        /// 5xx (or no StatusCode, e.g., socket/TLS) => transient; log+try next candidate after client-level retries.
+        /// </summary>
+        private async Task<JsonDocument?> TryFirstOkAsync(IEnumerable<string> endpoints)
         {
             foreach (var ep in endpoints)
             {
-                ct.ThrowIfCancellationRequested();
                 try
                 {
-                    return await _sageApiClient.GetAsync<JsonDocument>(ep, ct);
+                    return await _sageApiClient.GetAsync<JsonDocument>(ep, CancellationToken.None);
                 }
                 catch (HttpRequestException ex) when ((int?)ex.StatusCode is 400 or 404)
                 {
                     _logger.LogDebug("Upstream {Code} for {Endpoint}; trying next.", ex.StatusCode, ep);
                 }
+                // Also skip over transient 5xx and network errors
                 catch (HttpRequestException ex) when (ex.StatusCode is null || (int)ex.StatusCode >= 500)
                 {
                     _logger.LogDebug("Upstream {Code} for {Endpoint}; trying next.", ex.StatusCode, ep);
@@ -288,6 +290,9 @@ namespace Sage200Microservice.Services.Implementations
             return null;
         }
 
+        /// <summary>
+        /// Extracts (id, reference) from a create response. Handles both single-object and { "value": [ {...} ] }.
+        /// </summary>
         private static (long Id, string Reference) ExtractOrderIdentity(JsonDocument doc)
         {
             static (long, string) FromElement(JsonElement el)
@@ -301,6 +306,7 @@ namespace Sage200Microservice.Services.Implementations
                     else if (idProp.ValueKind == JsonValueKind.String && long.TryParse(idProp.GetString(), out var iStr)) id = iStr;
                 }
 
+                // Many SOP orders expose "reference"; some use "document_no" or "order_no".
                 if (el.TryGetProperty("reference", out var r1) && r1.ValueKind == JsonValueKind.String) reference = r1.GetString()!;
                 else if (el.TryGetProperty("document_no", out var r2) && r2.ValueKind == JsonValueKind.String) reference = r2.GetString()!;
                 else if (el.TryGetProperty("order_no", out var r3) && r3.ValueKind == JsonValueKind.String) reference = r3.GetString()!;
@@ -312,17 +318,24 @@ namespace Sage200Microservice.Services.Implementations
             if (root.ValueKind == JsonValueKind.Object)
             {
                 if (root.TryGetProperty("value", out var arr) && arr.ValueKind == JsonValueKind.Array && arr.GetArrayLength() > 0)
+                {
                     return FromElement(arr[0]);
-
+                }
                 return FromElement(root);
             }
 
             if (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0)
+            {
                 return FromElement(root[0]);
+            }
 
             return (0L, string.Empty);
         }
 
+        /// <summary>
+        /// Given an arbitrary Sage transaction JSON response, returns a normalized snapshot of useful fields.
+        /// Handles shapes from sales_transaction_views / sales_invoices / trader_transactions.
+        /// </summary>
         private static InvoiceSnapshot? MaterializeInvoiceSnapshot(JsonDocument doc)
         {
             JsonElement obj;
@@ -417,7 +430,28 @@ namespace Sage200Microservice.Services.Implementations
             }
             return null;
         }
+        private async Task<string?> PickExistingFieldAsync(string entity, params string[] candidates)
+        {
+            try
+            {
+                var doc = await _sageApiClient.GetAsync<JsonDocument>($"{entity}?$top=1", CancellationToken.None);
+                var root = doc.RootElement;
+                JsonElement first = root.ValueKind == JsonValueKind.Object && root.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.Array && v.GetArrayLength() > 0
+                    ? v[0]
+                    : (root.ValueKind == JsonValueKind.Array && root.GetArrayLength() > 0 ? root[0] : default);
 
+                if (first.ValueKind != JsonValueKind.Undefined && first.ValueKind != JsonValueKind.Null && first.ValueKind != JsonValueKind.Undefined)
+                {
+                    foreach (var name in candidates)
+                    {
+                        if (first.TryGetProperty(name, out _)) return name;
+                    }
+                }
+            }
+            catch { /* ignore and fall back */ }
+            return null;
+        }
+        // Lightweight normalized view over various Sage response shapes
         private sealed class InvoiceSnapshot
         {
             public long? Id { get; init; }

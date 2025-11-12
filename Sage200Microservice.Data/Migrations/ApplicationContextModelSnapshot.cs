@@ -417,23 +417,8 @@ namespace Sage200Microservice.Data.Migrations
                     b.Property<string>("RequestHash")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Resource")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<long?>("ResourceId")
                         .HasColumnType("bigint");
-
-                    b.Property<string>("ResponseBody")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ResponseContentType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ResponseHeaders")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ResponseStatusCode")
-                        .HasColumnType("int");
 
                     b.Property<string>("ResultSageUrn")
                         .HasMaxLength(128)

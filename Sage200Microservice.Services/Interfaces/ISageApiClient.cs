@@ -1,7 +1,4 @@
 
-using Microsoft.Extensions.Logging;
-using Sage200Microservice.Services.Models;
-
 namespace Sage200Microservice.Services.Interfaces
 {
     public interface ISageApiClient
@@ -70,18 +67,5 @@ namespace Sage200Microservice.Services.Interfaces
         /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
         /// <returns>The HTTP response message from Sage 200.</returns>
         Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken = default);
-
-        private void LogHeaderHintIfMissing(HttpRequestMessage req, ILogger logger, SageApiSettings cfg)
-        {
-            bool missingSite = !req.Headers.Contains(cfg.SiteHeaderName);
-            bool missingCompany = !req.Headers.Contains(cfg.CompanyHeaderName);
-            bool missingApiKey = !req.Headers.Contains(cfg.ApiKeyHeaderName);
-
-            if (missingSite || missingCompany || missingApiKey)
-            {
-                logger.LogDebug("ISageApiClient sending request with headers present? Site:{Site} Company:{Company} ApiKey:{ApiKey}",
-                    !missingSite, !missingCompany, !missingApiKey);
-            }
-        }
     }
 }

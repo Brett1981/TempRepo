@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Sage200Microservice.API.DTOs;
 using Sage200Microservice.Data.Models;
 using Sage200Microservice.Data.Repositories;
-using System.ComponentModel.DataAnnotations;
 
 namespace Sage200Microservice.API.Controllers
 {
@@ -19,6 +18,9 @@ namespace Sage200Microservice.API.Controllers
         private readonly IExternalIdLinkRepository _links;
         private readonly IApiKeyRepository _apiKeys;
 
+        /// <summary>
+        /// Initializes the controller.
+        /// </summary>
         public LinksController(IExternalIdLinkRepository links, IApiKeyRepository apiKeys)
         {
             _links = links;
@@ -26,12 +28,12 @@ namespace Sage200Microservice.API.Controllers
         }
 
         /// <summary>
-        /// Resolve a single external reference to its Sage identifier(s).
-        /// If appId is omitted, resolves the caller's AppId from the "X-Api-Key" header.
+        /// Resolve a single external reference to its Sage identifier(s). If appId is omitted, the
+        /// caller's AppId is resolved from the "X-Api-Key" header.
         /// </summary>
-        /// <param name="entity">One of: Customer|SopOrder|SalesReceipt|SalesPayment|SalesCreditNote|SalesInvoice</param>
-        /// <param name="externalRef">The external reference to resolve.</param>
-        /// <param name="appId">Optional explicit AppId; if omitted, inferred from X-Api-Key.</param>
+        /// <param name="entity">      One of: Customer|SopOrder|SalesReceipt|SalesPayment|SalesCreditNote|SalesInvoice </param>
+        /// <param name="externalRef"> The external ref to resolve (from the calling app). </param>
+        /// <param name="appId">       Optional explicit AppId; if omitted, infer from X-Api-Key. </param>
         [HttpGet("resolve")]
         [ProducesResponseType(typeof(LinkResolveResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -39,10 +41,10 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ResolveAsync(
-            [FromQuery, Required] string entity,
-            [FromQuery, Required] string externalRef,
+            [FromQuery] string entity,
+            [FromQuery] string externalRef,
             [FromQuery] int? appId,
-            CancellationToken ct = default)
+            CancellationToken ct)
         {
             // Validate entity type (closed set)
             if (!TryParseEntity(entity, out var entityType))
@@ -52,7 +54,7 @@ namespace Sage200Microservice.API.Controllers
                     Type = "https://httpstatuses.com/400",
                     Title = "Invalid entity",
                     Status = StatusCodes.Status400BadRequest,
-                    Detail = "Allowed: Customer|SopOrder|SalesReceipt|SalesPayment|SalesCreditNote|SalesInvoice"
+                    Detail = $"Unsupported entity '{entity}'. Allowed: Customer|SopOrder|SalesReceipt|SalesPayment|SalesCreditNote|SalesInvoice"
                 });
             }
 
@@ -67,7 +69,7 @@ namespace Sage200Microservice.API.Controllers
                 });
             }
 
-            // Determine AppId (query param wins; else infer from X-Api-Key)
+            // Determine AppId
             var effectiveAppId = appId;
             if (effectiveAppId == null)
             {
@@ -79,12 +81,12 @@ namespace Sage200Microservice.API.Controllers
                         Type = "https://httpstatuses.com/403",
                         Title = "Forbidden",
                         Status = StatusCodes.Status403Forbidden,
-                        Detail = "AppId is required via 'appId' or a valid 'X-Api-Key' header."
+                        Detail = "AppId is required, either via 'appId' query parameter or by supplying a valid 'X-Api-Key' header."
                     });
                 }
 
-                var keyRow = await _apiKeys.GetByKeyAsync(apiKey, ct) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey, ct);
-                var valid = await _apiKeys.IsValidKeyAsync(apiKey, ct);
+                var keyRow = await _apiKeys.GetByKeyAsync(apiKey) ?? await _apiKeys.GetByPreviousKeyAsync(apiKey);
+                var valid = await _apiKeys.IsValidKeyAsync(apiKey);
                 if (keyRow == null || !valid)
                 {
                     return StatusCode(StatusCodes.Status401Unauthorized, new ProblemDetails
@@ -96,7 +98,7 @@ namespace Sage200Microservice.API.Controllers
                     });
                 }
 
-                await _apiKeys.UpdateLastUsedAsync(apiKey, ct);
+                await _apiKeys.UpdateLastUsedAsync(apiKey);
                 effectiveAppId = keyRow.Id;
             }
 
@@ -117,33 +119,37 @@ namespace Sage200Microservice.API.Controllers
                 return NotFound(pd);
             }
 
-            return Ok(new LinkResolveResponseDto
+            var resp = new LinkResolveResponseDto
             {
                 SageId = link.SageId,
                 SageUrn = link.SageUrn,
-                SageCode = null // reserved for future use
-            });
+                SageCode = null // left null in this step; can be populated in a later enhancement
+            };
+            return Ok(resp);
         }
 
         /// <summary>
         /// Reverse lookup: list external refs for a given Sage identifier (ID or URN).
         /// </summary>
-        /// <param name="entity">One of: Customer|SopOrder|SalesReceipt|SalesPayment|SalesCreditNote|SalesInvoice</param>
-        /// <param name="sageId">Numeric Sage identifier, when applicable.</param>
-        /// <param name="sageUrn">URN Sage identifier, when applicable.</param>
-        /// <param name="page">1-based page index (default 1).</param>
-        /// <param name="pageSize">Requested page size; default 50; server cap 100.</param>
+        /// <param name="entity">   One of: Customer|SopOrder|SalesReceipt|SalesPayment|SalesCreditNote|SalesInvoice </param>
+        /// <param name="sageId">  
+        /// Numeric Sage identifier, when applicable (e.g., Customers, SOP).
+        /// </param>
+        /// <param name="sageUrn">  URN Sage identifier, when applicable. </param>
+        /// <param name="page">     1-based page index (default 1). </param>
+        /// <param name="pageSize"> Requested page size; default 50; server cap 100. </param>
         [HttpGet("reverse")]
         [ProducesResponseType(typeof(LinkReverseResponseDto), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> ReverseAsync(
-            [FromQuery, Required] string entity,
+            [FromQuery] string entity,
             [FromQuery] long? sageId,
             [FromQuery] string? sageUrn,
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50,
             CancellationToken ct = default)
         {
+            // Validate entity
             if (!TryParseEntity(entity, out var entityType))
             {
                 return BadRequest(new ProblemDetails
@@ -151,7 +157,7 @@ namespace Sage200Microservice.API.Controllers
                     Type = "https://httpstatuses.com/400",
                     Title = "Invalid entity",
                     Status = StatusCodes.Status400BadRequest,
-                    Detail = "Allowed: Customer|SopOrder|SalesReceipt|SalesPayment|SalesCreditNote|SalesInvoice"
+                    Detail = $"Unsupported entity '{entity}'. Allowed: Customer|SopOrder|SalesReceipt|SalesPayment|SalesCreditNote|SalesInvoice"
                 });
             }
 
@@ -169,7 +175,7 @@ namespace Sage200Microservice.API.Controllers
                 });
             }
 
-            // Normalize paging (cap to 100)
+            // Paging normalization (server-side cap)
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 50;
             if (pageSize > 100) pageSize = 100;
@@ -182,11 +188,7 @@ namespace Sage200Microservice.API.Controllers
             {
                 Page = page,
                 PageSize = pageSize,
-                Items = items.Select(x => new LinkReverseItemDto
-                {
-                    AppId = x.AppId,
-                    ExternalRef = x.ExternalRef
-                }).ToList()
+                Items = items.Select(x => new LinkReverseItemDto { AppId = x.AppId, ExternalRef = x.ExternalRef }).ToList()
             };
 
             return Ok(dto);
@@ -196,8 +198,12 @@ namespace Sage200Microservice.API.Controllers
         private static bool TryParseEntity(string? value, out ExternalEntityType entityType)
         {
             entityType = default;
-            if (string.IsNullOrWhiteSpace(value)) return false;
-            return Enum.TryParse(value, ignoreCase: true, out entityType);
+
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            // Accept case-insensitive matches of the closed set
+            return Enum.TryParse<ExternalEntityType>(value, ignoreCase: true, out entityType);
         }
     }
 }

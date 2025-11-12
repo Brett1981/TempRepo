@@ -29,7 +29,7 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<List<ApiKeyResponseDto>>> GetAllAsync(CancellationToken ct)
         {
-            var apiKeys = await _apiKeyService.GetAllAsync(ct);
+            var apiKeys = await _apiKeyService.GetAllAsync();
             var list = apiKeys.Select(MapToResponseDto).ToList();
             return Ok(list);
         }
@@ -40,7 +40,7 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<ApiKeyResponseDto>> GetByIdAsync(int id, CancellationToken ct)
         {
-            var apiKey = await _apiKeyService.GetByIdAsync(id, ct);
+            var apiKey = await _apiKeyService.GetByIdAsync(id);
             if (apiKey is null) return NotFound();
             return Ok(MapToResponseDto(apiKey));
         }
@@ -59,8 +59,7 @@ namespace Sage200Microservice.API.Controllers
             var created = await _apiKeyService.CreateAsync(
                 request.ClientName,
                 request.ExpiresAt,
-                request.AllowedIpAddresses,
-                ct);
+                request.AllowedIpAddresses);
 
             var response = MapToResponseDto(created);
             return CreatedAtAction(nameof(GetByIdAsync), new { id = created.Id }, response);
@@ -78,7 +77,7 @@ namespace Sage200Microservice.API.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var existing = await _apiKeyService.GetByIdAsync(id, ct);
+            var existing = await _apiKeyService.GetByIdAsync(id);
             if (existing is null) return NotFound();
 
             existing.ClientName = request.ClientName;
@@ -86,7 +85,7 @@ namespace Sage200Microservice.API.Controllers
             existing.IsActive = request.IsActive;
             existing.AllowedIpAddresses = request.AllowedIpAddresses;
 
-            var updated = await _apiKeyService.UpdateAsync(existing, ct);
+            var updated = await _apiKeyService.UpdateAsync(existing);
             return Ok(MapToResponseDto(updated));
         }
 
@@ -96,7 +95,7 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeactivateAsync(int id, CancellationToken ct)
         {
-            var ok = await _apiKeyService.DeactivateAsync(id, ct);
+            var ok = await _apiKeyService.DeactivateAsync(id);
             return ok ? NoContent() : NotFound();
         }
 
@@ -113,7 +112,7 @@ namespace Sage200Microservice.API.Controllers
         {
             try
             {
-                var rotated = await _apiKeyService.RotateAsync(id, request.GracePeriodDays, ct);
+                var rotated = await _apiKeyService.RotateAsync(id, request.GracePeriodDays);
                 if (rotated is null) return NotFound();
                 return Ok(MapToResponseDto(rotated));
             }
@@ -133,12 +132,13 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiKeyValidationResponseDto>> ValidateAsync(string key, CancellationToken ct)
         {
-            var entity = await _apiKeyService.ValidateAsync(key, ct);
+            var entity = await _apiKeyService.ValidateAsync(key);
             var isValid = entity is not null;
 
+            // Optionally record usage (if service supports it)
             if (isValid)
             {
-                try { await _apiKeyService.RecordUsageAsync(key, ct); }
+                try { await _apiKeyService.RecordUsageAsync(key); }
                 catch (Exception ex) { _logger.LogWarning(ex, "Failed to record API key usage for {Key}", key); }
             }
 
@@ -161,7 +161,7 @@ namespace Sage200Microservice.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> ValidateHeadAsync(string key, CancellationToken ct)
         {
-            var entity = await _apiKeyService.ValidateAsync(key, ct);
+            var entity = await _apiKeyService.ValidateAsync(key);
             return entity is null ? NotFound() : NoContent();
         }
 

@@ -6,11 +6,19 @@ using System.Security.Cryptography;
 
 namespace Sage200Microservice.Services.Implementations
 {
+    /// <summary>
+    /// Implementation of the API key service
+    /// </summary>
     public class ApiKeyService : IApiKeyService
     {
         private readonly ILogger<ApiKeyService> _logger;
         private readonly IApiKeyRepository _apiKeyRepository;
 
+        /// <summary>
+        /// Initializes a new instance of the ApiKeyService class
+        /// </summary>
+        /// <param name="logger">           The logger </param>
+        /// <param name="apiKeyRepository"> The API key repository </param>
         public ApiKeyService(
             ILogger<ApiKeyService> logger,
             IApiKeyRepository apiKeyRepository)
@@ -19,40 +27,36 @@ namespace Sage200Microservice.Services.Implementations
             _apiKeyRepository = apiKeyRepository;
         }
 
-        public async Task<ApiKey?> GetByKeyAsync(string key, CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<ApiKey> GetByKeyAsync(string key)
         {
-            if (string.IsNullOrWhiteSpace(key)) return null;
-            // CT-enabled (from your IApiKeyRepository)
-            return await _apiKeyRepository.GetByKeyAsync(key, ct);
+            if (string.IsNullOrEmpty(key))
+            {
+                return null;
+            }
+
+            return await _apiKeyRepository.GetByKeyAsync(key);
         }
 
-        public Task<ApiKey?> GetByIdAsync(int id, CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<ApiKey> GetByIdAsync(int id)
         {
-            // Base IRepository<T> version likely has NO ct — call the non-CT overload.
-            return _apiKeyRepository.GetByIdAsync(id);
+            return await _apiKeyRepository.GetByIdAsync(id);
         }
 
-        public async Task<List<ApiKey>> GetAllAsync(CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<List<ApiKey>> GetAllAsync()
         {
-            // Use your paged GetAllAsync(...) that DOES accept a CT and flatten to a list
-            var page = await _apiKeyRepository.GetAllAsync(
-                page: 1,
-                pageSize: 1000,            // adjust if you want a different admin cap
-                sortBy: "CreatedAt",
-                sortDirection: "desc",
-                ct: ct);
-
-            return page.Items.ToList();
+            return (List<ApiKey>)await _apiKeyRepository.GetAllAsync();
         }
 
-        public async Task<ApiKey> CreateAsync(
-            string clientName,
-            DateTime? expiresAt = null,
-            string? allowedIpAddresses = null,
-            CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<ApiKey> CreateAsync(string clientName, DateTime? expiresAt = null, string allowedIpAddresses = null)
         {
-            if (string.IsNullOrWhiteSpace(clientName))
+            if (string.IsNullOrEmpty(clientName))
+            {
                 throw new ArgumentException("Client name is required", nameof(clientName));
+            }
 
             var apiKey = new ApiKey
             {
@@ -65,86 +69,118 @@ namespace Sage200Microservice.Services.Implementations
                 Version = 1
             };
 
-            // Base IRepository<T>.AddAsync(entity) — non-CT
             return await _apiKeyRepository.AddAsync(apiKey);
         }
 
-        public async Task<ApiKey> UpdateAsync(ApiKey apiKey, CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<ApiKey> UpdateAsync(ApiKey apiKey)
         {
-            if (apiKey is null) throw new ArgumentNullException(nameof(apiKey));
-            // Base IRepository<T>.UpdateAsync(entity) — non-CT
+            if (apiKey == null)
+            {
+                throw new ArgumentNullException(nameof(apiKey));
+            }
+
             return await _apiKeyRepository.UpdateAsync(apiKey);
         }
 
-        public async Task<bool> DeactivateAsync(int id, CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<bool> DeactivateAsync(int id)
         {
-            // Non-CT base call
             var apiKey = await _apiKeyRepository.GetByIdAsync(id);
-            if (apiKey is null) return false;
+            if (apiKey == null)
+            {
+                return false;
+            }
 
             apiKey.IsActive = false;
-            // Non-CT base call
             await _apiKeyRepository.UpdateAsync(apiKey);
             return true;
         }
 
-        public async Task<ApiKey?> RotateAsync(int id, int gracePeriodDays = 7, CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<ApiKey> RotateAsync(int id, int gracePeriodDays = 7)
         {
-            // Non-CT base call
             var apiKey = await _apiKeyRepository.GetByIdAsync(id);
-            if (apiKey is null)
+            if (apiKey == null)
+            {
                 throw new ArgumentException($"API key with ID {id} not found", nameof(id));
+            }
 
+            // Store the previous key
             apiKey.PreviousKey = apiKey.Key;
             apiKey.PreviousKeyExpiresAt = DateTime.UtcNow.AddDays(gracePeriodDays);
+
+            // Generate a new key
             apiKey.Key = GenerateApiKey();
             apiKey.Version++;
 
-            // Non-CT base call
             return await _apiKeyRepository.UpdateAsync(apiKey);
         }
 
-        public async Task<ApiKey?> ValidateAsync(string key, CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<ApiKey> ValidateAsync(string key)
         {
-            if (string.IsNullOrWhiteSpace(key)) return null;
+            if (string.IsNullOrEmpty(key))
+            {
+                return null;
+            }
 
-            // CT-enabled helpers
-            var isValid = await _apiKeyRepository.IsValidKeyAsync(key, ct);
-            if (!isValid) return null;
+            var apiKey = await _apiKeyRepository.GetByKeyAsync(key);
+            if (apiKey != null && apiKey.IsValid())
+            {
+                return apiKey;
+            }
 
-            var current = await _apiKeyRepository.GetByKeyAsync(key, ct);
-            if (current is not null) return current;
+            // Check if it matches a previous key in the grace period
+            var apiKeyByPrevious = await _apiKeyRepository.GetByPreviousKeyAsync(key);
+            if (apiKeyByPrevious != null && apiKeyByPrevious.IsPreviousKeyValid())
+            {
+                return apiKeyByPrevious;
+            }
 
-            var previous = await _apiKeyRepository.GetByPreviousKeyAsync(key, ct);
-            return previous;
+            return null;
         }
 
-        public async Task<bool> RecordUsageAsync(string key, CancellationToken ct = default)
+        /// <inheritdoc/>
+        public async Task<bool> RecordUsageAsync(string key)
         {
-            if (string.IsNullOrWhiteSpace(key)) return false;
+            if (string.IsNullOrEmpty(key))
+            {
+                return false;
+            }
 
-            // CT-enabled fast path
-            var ok = await _apiKeyRepository.UpdateLastUsedAsync(key, ct);
-            if (ok) return true;
+            var apiKey = await _apiKeyRepository.GetByKeyAsync(key);
+            if (apiKey != null)
+            {
+                apiKey.LastUsedAt = DateTime.UtcNow;
+                await _apiKeyRepository.UpdateAsync(apiKey);
+                return true;
+            }
 
-            // Fallback: load (CT-enabled), update (non-CT)
-            var entity = await _apiKeyRepository.GetByKeyAsync(key, ct)
-                        ?? await _apiKeyRepository.GetByPreviousKeyAsync(key, ct);
+            // Check if it's a previous key
+            var apiKeyByPrevious = await _apiKeyRepository.GetByPreviousKeyAsync(key);
+            if (apiKeyByPrevious != null)
+            {
+                apiKeyByPrevious.LastUsedAt = DateTime.UtcNow;
+                await _apiKeyRepository.UpdateAsync(apiKeyByPrevious);
+                return true;
+            }
 
-            if (entity is null) return false;
-
-            entity.LastUsedAt = DateTime.UtcNow;
-            await _apiKeyRepository.UpdateAsync(entity); // non-CT base
-            return true;
+            return false;
         }
 
-        private static string GenerateApiKey()
+        /// <summary>
+        /// Generates a new API key
+        /// </summary>
+        /// <returns> The generated API key </returns>
+        private string GenerateApiKey()
         {
-            Span<byte> bytes = stackalloc byte[32];
-            RandomNumberGenerator.Fill(bytes);
-            var base64 = Convert.ToBase64String(bytes)
-                .Replace("+", "-").Replace("/", "_").Replace("=", "");
-            return base64;
+            var bytes = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(bytes);
+            }
+            return Convert.ToBase64String(bytes).Replace("+", "-").Replace("/", "_").Replace("=", "");
         }
     }
 }

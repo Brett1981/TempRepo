@@ -1,103 +1,97 @@
 ﻿using System;
-using Microsoft.Extensions.Configuration;
 
 namespace Sage200Microservice.Services.Models
 {
     /// <summary>
-    /// Strongly-typed configuration for Sage API access and header policies.
+    /// Strongly-typed settings for Sage 200 (UKI) Professional (via Sage ID).
+    /// Contract: <see cref="BaseUrl"/> MUST already include the version segment (e.g., .../v1/)
+    /// and MUST end with a trailing slash. Do NOT append version segments in code.
     /// </summary>
     public sealed class SageApiSettings
     {
-        public bool ForwardApiKeyToSage { get; set; } = false;
-        /// <summary>Absolute base URL for Sage 200 API (must end with '/').</summary>
-        public string BaseUrl { get; set; } = "https://api.columbus.sage.com/uk/sage200extra/accounts/v1/";
+        /// <summary>
+        /// Absolute base URL that already includes '/v1/' and ends with '/'.
+        /// Example: https://api.columbus.sage.com/uk/sage200extra/accounts/v1/
+        /// </summary>
+        public string BaseUrl { get; set; } = string.Empty;
 
-        /// <summary>OAuth2 client id.</summary>
+        /// <summary>OAuth2 client id (from Sage ID / Entra app registration).</summary>
         public string ClientId { get; set; } = string.Empty;
 
-        /// <summary>OAuth2 client secret.</summary>
+        /// <summary>OAuth2 client secret (store in user-secrets or environment variables).</summary>
         public string ClientSecret { get; set; } = string.Empty;
 
-        /// <summary>Token endpoint URL.</summary>
-        public string TokenEndpoint { get; set; } = "https://id.sage.com/oauth/token";
+        /// <summary>OAuth2 token endpoint, e.g., https://id.sage.com/oauth/token</summary>
+        public string TokenEndpoint { get; set; } = string.Empty;
 
-        /// <summary>Authorize endpoint URL.</summary>
-        public string AuthorizationEndpoint { get; set; } = "https://id.sage.com/authorize";
+        /// <summary>OAuth2 authorize endpoint, e.g., https://id.sage.com/authorize</summary>
+        public string AuthorizationEndpoint { get; set; } = string.Empty;
 
-        /// <summary>Redirect URI configured with the IdP.</summary>
+        /// <summary>Redirect URI registered with Sage, e.g., https://localhost:7003/auth/callback</summary>
         public string RedirectUri { get; set; } = string.Empty;
 
-        /// <summary>Space-separated scopes provided for the OAuth flow (e.g., "openid profile email offline_access").</summary>
-        public string Scopes { get; set; } = "openid profile email offline_access";
+        /// <summary>
+        /// OAuth2 audience / resource for which tokens are requested.
+        /// </summary>
+        public string Audience { get; set; } = string.Empty;
 
-        /// <summary>Primary resource/audience the token must target (e.g., "s200ukipd/sage200").</summary>
-        public string Audience { get; set; } = "s200ukipd/sage200";
+        /// <summary>
+        /// Example: "openid offline_access profile"
+        /// </summary>
+        public string? Scopes { get; set; }
 
-        /// <summary>Header name used to convey the Sage site id.</summary>
         public string SiteHeaderName { get; set; } = "X-Site";
-
-        /// <summary>Header name used to convey the Sage company id.</summary>
         public string CompanyHeaderName { get; set; } = "X-Company";
-
-        /// <summary>Header name used to convey the caller application API key.</summary>
-        public string ApiKeyHeaderName { get; set; } = "X-Api-Key";
-
-        /// <summary>Default SiteId to inject when absent from inbound requests (Development/test convenience).</summary>
+        /// <summary>Default X-Site header value (optional; override per request when needed).</summary>
         public string? SiteId { get; set; }
 
-        /// <summary>Default CompanyId to inject when absent from inbound requests (Development/test convenience).</summary>
+        /// <summary>Default X-Company header value (optional; override per request when needed).</summary>
         public string? CompanyId { get; set; }
 
-        /// <summary>Default API key to use when running in Development and no X-Api-Key was provided.</summary>
-        public string? DevelopmentDefaultApiKey { get; set; }
+        /// <summary>OAuth2 revocation endpoint, e.g., https://id.sage.com/oauth/revoke (optional)</summary>
+        public string? RevocationEndpoint { get; set; }
 
-        /// <summary>Whether Development profile may auto-inject the default API key into outbound Sage requests.</summary>
-        public bool AllowDevelopmentFallbackApiKey { get; set; } = true;
-
-        /// <summary>Enable dev/test fault injection via headers (e.g., X-Fault).</summary>
-        public bool EnableFaultInjection { get; set; } = false;
-
-        /// <summary>
-        /// Optional list of API keys that should be treated as Admins (for environments without JWT roles).
-        /// If the inbound X-Api-Key matches one of these, we grant role "Admin" for the request scope.
-        /// </summary>
-        public string[] AdminApiKeys { get; set; } = Array.Empty<string>();
-
-        /// <summary>Logging sub-config.</summary>
-        public SageApiLoggingSettings Logging { get; set; } = new();
+        // ---------------- Token Maintenance / Proactive Refresh ----------------
+        public int? ProactiveRefreshWindowSeconds { get; set; } = 300; // refresh ≥5 min before expiry
+        public int? MaintenanceMinimumDelaySeconds { get; set; } = 30; // clamp lowest sleep
+        public int? KeepAliveMinutes { get; set; } = 60;               // refresh at least hourly when idle
 
         /// <summary>
-        /// Normalizes and validates key properties for safe use at runtime.
-        /// (We add this to satisfy existing calls and avoid null/format issues.)
+        /// Validate required fields and normalize BaseUrl. Throws on invalid configuration.
         /// </summary>
         public void ValidateAndNormalize()
         {
             if (string.IsNullOrWhiteSpace(BaseUrl))
                 throw new InvalidOperationException("SageApi:BaseUrl is required.");
 
-            if (!BaseUrl.EndsWith("/", StringComparison.Ordinal))
+            if (!Uri.TryCreate(BaseUrl, UriKind.Absolute, out _))
+                throw new InvalidOperationException("SageApi:BaseUrl must be an absolute URL.");
+
+            // Ensure trailing slash
+            if (!BaseUrl.EndsWith("/"))
                 BaseUrl += "/";
 
-            if (string.IsNullOrWhiteSpace(TokenEndpoint))
-                throw new InvalidOperationException("SageApi:TokenEndpoint is required.");
+            // Require version segment present (e.g., .../v1/)
+            var normalized = BaseUrl.ToLowerInvariant();
+            if (!normalized.Contains("/v1/"))
+                throw new InvalidOperationException(
+                    "SageApi:BaseUrl MUST include the API version segment (e.g., .../v1/). " +
+                    "Do NOT append version segments in code; fix configuration instead."
+                );
 
-            if (string.IsNullOrWhiteSpace(AuthorizationEndpoint))
-                throw new InvalidOperationException("SageApi:AuthorizationEndpoint is required.");
-
+            // Auth requirements
             if (string.IsNullOrWhiteSpace(ClientId))
                 throw new InvalidOperationException("SageApi:ClientId is required.");
-
             if (string.IsNullOrWhiteSpace(ClientSecret))
                 throw new InvalidOperationException("SageApi:ClientSecret is required.");
+            if (string.IsNullOrWhiteSpace(TokenEndpoint))
+                throw new InvalidOperationException("SageApi:TokenEndpoint is required.");
+            if (string.IsNullOrWhiteSpace(AuthorizationEndpoint))
+                throw new InvalidOperationException("SageApi:AuthorizationEndpoint is required.");
+            if (string.IsNullOrWhiteSpace(RedirectUri))
+                throw new InvalidOperationException("SageApi:RedirectUri is required.");
+            if (string.IsNullOrWhiteSpace(Audience))
+                throw new InvalidOperationException("SageApi:Audience is required.");
         }
-    }
-
-    /// <summary>Payload logging options for outbound Sage calls.</summary>
-    public sealed class SageApiLoggingSettings
-    {
-        public bool Enabled { get; set; } = true;
-        public bool IncludePayloads { get; set; } = true;
-        public bool EncryptPayloads { get; set; } = true;
-        public int MaxBodyBytes { get; set; } = 65536;
     }
 }

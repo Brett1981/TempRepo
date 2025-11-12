@@ -1,31 +1,24 @@
 ﻿using FluentValidation;
 using FluentValidation.AspNetCore;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc; // ApiExplorerSettingsAttribute
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
-using OpenTelemetry.Metrics;
 using Sage200Microservice.API;
 using Sage200Microservice.API.Configuration;
 using Sage200Microservice.API.Extensions;
-using Sage200Microservice.API.Grpc;
 using Sage200Microservice.API.HealthChecks;
 using Sage200Microservice.API.Logging;
 using Sage200Microservice.API.Metrics;
 using Sage200Microservice.API.Middleware;
 using Sage200Microservice.API.Monitoring;
-using Sage200Microservice.API.Security;
 using Sage200Microservice.API.Services;
-using Sage200Microservice.API.Startup;
 using Sage200Microservice.API.Tracing;
 using Sage200Microservice.API.Validators;
 using Sage200Microservice.Data;
 using Sage200Microservice.Data.Repositories;
-using Sage200Microservice.Services.Http;
 using Sage200Microservice.Services.Implementations;
 using Sage200Microservice.Services.Implementations.Sales;
 using Sage200Microservice.Services.Implementations.Sop;
@@ -34,11 +27,9 @@ using Sage200Microservice.Services.Logging;
 using Sage200Microservice.Services.Logging.Encryption;
 using Sage200Microservice.Services.Messaging;
 using Sage200Microservice.Services.Models;
-using Sage200Microservice.Services.Payments;
 using Sage200Microservice.Services.Security;
 using Serilog;
 using System.Net.Mime;
-using System.Security.Claims;
 using System.Text.Json.Serialization;
 
 Console.WriteLine("BOOT: starting main");
@@ -111,12 +102,6 @@ try
     }
     // Build
     var app = builder.Build();
-
-    // Dev - only inbound API key fallback BEFORE your API key enforcement middleware/ filters
-    if (app.Environment.IsDevelopment())
-    {
-        app.UseMiddleware<DevApiKeyFallbackMiddleware>();
-    }
 
     // 15) Pipeline (exception handler, dev extras, headers, tracing, rate-limit, etc.)
     ProgramBootstrap.ConfigurePipeline(app);
@@ -194,14 +179,6 @@ internal static class ProgramBootstrap
     /// <summary> Adds OpenTelemetry logging & tracing plus DataProtection persisted to ./keys. </summary>
     public static void ConfigureTracingAndProtection(WebApplicationBuilder builder)
     {
-        builder.Services.AddOpenTelemetry().WithMetrics(m =>
-        {
-            m.AddAspNetCoreInstrumentation();
-            m.AddRuntimeInstrumentation();
-            m.AddPrometheusExporter();
-        });
-
-
         builder.Logging.AddOpenTelemetryLogging(builder.Configuration);
 
         builder.Services
@@ -328,9 +305,7 @@ internal static class ProgramBootstrap
         builder.Services.AddScoped<ISalesCreditNotesService, SalesCreditNotesService>();
         builder.Services.AddScoped<ISalesInvoicesService, SalesInvoicesService>();
 
-        // Payments allocation
-        builder.Services.AddScoped<IPaymentsAllocationService, PaymentsAllocationService>();
-
+        // *** ADDED FOR STAGE 8 ***
         // Sync and Reconciliation Services
         builder.Services.AddScoped<ISyncService, SyncService>();
         builder.Services.AddScoped<IReconciliationService, ReconciliationService>();
@@ -358,26 +333,18 @@ internal static class ProgramBootstrap
         // AES-256-GCM field encryption for ApiLogs payloads
         builder.Services.Configure<AesGcmFieldEncryptor.Options>(builder.Configuration.GetSection("Logging:ApiLogs"));
         builder.Services.AddSingleton<IFieldEncryptor, AesGcmFieldEncryptor>();
-
-        builder.Services.AddRetryDlqParity();
-        builder.Services.AddKafkaProducer(builder.Configuration);
-        builder.Services.AddSingleton<Sage200Microservice.Services.Messaging.Publishing.IKafkaProducer, Sage200Microservice.Services.Messaging.Publishing.ConfluentKafkaProducer>();
     }
 
     /// <summary>
-    /// Configures named HttpClients (SageAuth, ISageApiClient) + IHttpContextAccessor.
-    /// Ensures header injection happens before logging so logs show final headers.
+    /// Configures named HttpClients (SageAuth, ISageApiClient) + HttpContextAccessor.
     /// </summary>
     public static void ConfigureHttpClients(WebApplicationBuilder builder)
     {
-        // Handlers
         builder.Services.AddTransient<Sage200Microservice.Services.Http.CorrelationIdHandler>();
         builder.Services.AddTransient<Sage200Microservice.Services.Http.SageApiLoggingHandler>();
         builder.Services.AddTransient<SageAuthDelegatingHandler>();
-        builder.Services.AddTransient<SageRoutingHeaderHandler>();
         builder.Services.AddHttpContextAccessor();
 
-        // Auth helper (unchanged)
         builder.Services.AddHttpClient("SageAuth", c =>
         {
             c.DefaultRequestHeaders.Add("Accept", "application/json");
@@ -392,18 +359,13 @@ internal static class ProgramBootstrap
             KeepAlivePingTimeout = TimeSpan.FromSeconds(30)
         });
 
-        // Typed client (ISageApiClient): Correlation → Routing → Auth → Logging → Sockets
         builder.Services.AddHttpClient<ISageApiClient, SageApiClient>((sp, http) =>
         {
             var cfg = sp.GetRequiredService<IOptions<SageApiSettings>>().Value;
-            http.BaseAddress = new Uri(
-                cfg.BaseUrl.EndsWith("/") ? cfg.BaseUrl : cfg.BaseUrl + "/",
-                UriKind.Absolute);
+            http.BaseAddress = new Uri(cfg.BaseUrl.EndsWith("/") ? cfg.BaseUrl : cfg.BaseUrl + "/", UriKind.Absolute);
         })
-        .AddHttpMessageHandler<Sage200Microservice.Services.Http.CorrelationIdHandler>()  // outermost
-        .AddHttpMessageHandler<SageRoutingHeaderHandler>()                                 // resolves X-Site/X-Company
-        .AddHttpMessageHandler<SageAuthDelegatingHandler>()                                // adds Bearer (needs to run before logging)
-        .AddHttpMessageHandler<Sage200Microservice.Services.Http.SageApiLoggingHandler>()  // innermost (logs final request)
+        .AddHttpMessageHandler<Sage200Microservice.Services.Http.CorrelationIdHandler>()
+        .AddHttpMessageHandler<Sage200Microservice.Services.Http.SageApiLoggingHandler>()
         .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
         {
             PooledConnectionLifetime = TimeSpan.FromMinutes(15),
@@ -411,9 +373,9 @@ internal static class ProgramBootstrap
             KeepAlivePingPolicy = HttpKeepAlivePingPolicy.WithActiveRequests,
             KeepAlivePingDelay = TimeSpan.FromSeconds(60),
             KeepAlivePingTimeout = TimeSpan.FromSeconds(30)
-        });
+        })
+        .AddHttpMessageHandler<SageAuthDelegatingHandler>();
     }
-
 
     /// <summary>
     /// Adds memory/distributed cache and hosted services (InvoiceStatus, ApiKeyRotation,
@@ -430,51 +392,28 @@ internal static class ProgramBootstrap
         builder.Services.AddHostedService<AuditLogCleanupService>();
 
         builder.Services.AddDistributedMemoryCache();
-        builder.Services.AddSingleton<Sage200Microservice.Services.Auth.IOAuthStateStore,
-                              Sage200Microservice.Services.Auth.OAuthStateStore>();
         builder.Services.AddSingleton<IDistributedCache, MemoryDistributedCache>();
     }
 
     /// <summary>
     /// Adds Authentication placeholder and "ApiUser" Authorization policy (Dev-allow; Non-Dev
-    /// require API key or authenticated user). Also configures Admin role mapping for the
-    /// Kafka Replay controller and wires a Sage fault-injection flag via SageApiSettings.
+    /// require API key or authenticated user).
     /// </summary>
     public static void ConfigureAuth(WebApplicationBuilder builder)
     {
-        // Bind Sage settings (we rely on AdminApiKeys & EnableFaultInjection)
-        builder.Services.Configure<SageApiSettings>(builder.Configuration.GetSection("Sage"));
-
+        builder.Services.AddAuthentication(); // no interactive schemes; API key is middleware
         var isDev = builder.Environment.IsDevelopment();
-
-        // DEFAULT SCHEME: header-based API key
-        builder.Services
-            .AddAuthentication(options =>
-            {
-                options.DefaultAuthenticateScheme = HeaderApiKeyAuthHandler.Scheme;
-                options.DefaultChallengeScheme = HeaderApiKeyAuthHandler.Scheme;
-            })
-            .AddScheme<AuthenticationSchemeOptions, HeaderApiKeyAuthHandler>(HeaderApiKeyAuthHandler.Scheme, _ => { });
 
         builder.Services.AddAuthorization(options =>
         {
-            // Your existing policy: dev allow; non-dev require api key or authenticated user
             options.AddPolicy("ApiUser", policy =>
                 policy.RequireAssertion(ctx =>
                 {
                     if (isDev) return true;
-
-                    // Either header present OR user is authenticated by any scheme
                     var http = ctx.Resource as HttpContext;
                     if (http != null && http.Request.Headers.ContainsKey("X-Api-Key")) return true;
-
                     return ctx.User?.Identity?.IsAuthenticated == true;
                 }));
-
-            // No global fallback that forces every route to authorize; we’ll mark endpoints explicitly
-            // If you insist on a fallback, you must mark specific endpoints AllowAnonymous (see step 3)
-            // options.FallbackPolicy = new AuthorizationPolicyBuilder()
-            //     .RequireAuthenticatedUser().Build();
         });
     }
 
@@ -506,8 +445,6 @@ internal static class ProgramBootstrap
         builder.Services.AddCorsPolicy(builder.Configuration);
         builder.Services.AddSecurityHeaders(builder.Configuration);
         builder.Services.AddResponseCompression(o => o.EnableForHttps = true);
-        // Idempotency metrics (OTEL wrapper)
-        builder.Services.AddSingleton<Sage200Microservice.API.Middleware.IdempotencyMetrics>();
     }
 
     /// <summary>
@@ -515,10 +452,7 @@ internal static class ProgramBootstrap
     /// </summary>
     public static void ConfigureGrpc(WebApplicationBuilder builder)
     {
-        builder.Services.AddGrpc(options =>
-        {
-            options.Interceptors.Add<GrpcSageHeaderInterceptor>();
-        }).AddJsonTranscoding();
+        builder.Services.AddGrpc().AddJsonTranscoding();
         builder.Services.AddGrpcReflection();
         builder.Services.AddGrpcSwagger();
     }
@@ -604,9 +538,6 @@ internal static class ProgramBootstrap
         app.UseCorsPolicy(app.Configuration);
         app.UseRateLimiting();
 
-        // Global HTTP idempotency (applies to all POSTs; opt-out via [SkipIdempotency])
-        app.UseMiddleware<Sage200Microservice.API.Middleware.IdempotencyMiddleware>();
-
         if (!app.Environment.IsDevelopment())
         {
             // Require API key for everything EXCEPT auth, swagger, health, and the dashboard (html/js) & its data endpoints
@@ -637,7 +568,6 @@ internal static class ProgramBootstrap
     /// </summary>
     public static void MapEndpoints(WebApplication app)
     {
-
         app.MapControllers();
 
         app.MapGrpcService<InvoiceGrpcService>()
@@ -645,11 +575,6 @@ internal static class ProgramBootstrap
 
         app.MapGrpcService<SopGrpcService>()
             .WithMetadata(new ApiExplorerSettingsAttribute { IgnoreApi = true });
-
-        // Default scraping path: /metrics
-        app.MapPrometheusScrapingEndpoint(); // exposes GET /metrics
-
-        app.MapHealthChecks("/health").AllowAnonymous();
 
         app.MapGet("/business-dashboard", ctx =>
         {
@@ -690,25 +615,6 @@ internal static class ProgramBootstrap
 
         log.LogInformation("Using Auth PFX at '{Path}' for HTTPS endpoint.", path);
         return (path, pwd);
-    }
-
-    /// <summary>
-    /// Transforms the principal by adding Role=Admin if the inbound X-Api-Key matches Sage:AdminApiKeys.
-    /// Works in tandem with [Authorize(Roles = "Admin")] on KafkaReplayController.
-    /// </summary>
-    private sealed class AdminKeyToRoleTransformer : IClaimsTransformation
-    {
-        private readonly IOptions<SageApiSettings> _sage;
-
-        public AdminKeyToRoleTransformer(IOptions<SageApiSettings> sage) => _sage = sage;
-
-        public Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
-        {
-            var http = (principal as ClaimsPrincipal)?.Identities?.FirstOrDefault()?.BootstrapContext as HttpContext;
-            // If your hosting can’t populate BootstrapContext, we can resolve via IHttpContextAccessor:
-            // Prefer IHttpContextAccessor if needed—uncomment below and inject via ctor.
-            return Task.FromResult(principal);
-        }
     }
 
 }

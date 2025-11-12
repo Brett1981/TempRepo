@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Sage200Microservice.API.Middleware;
 using Sage200Microservice.Data;
 using Sage200Microservice.Services.Logging;
 
@@ -15,7 +14,6 @@ namespace Sage200Microservice.API.Controllers
     /// </summary>
     [ApiController]
     [Route("api/admin")]
-    [SkipAudit]
     [Authorize(Policy = "ApiUser")] // policy is registered in Program.cs
     public class AdminController : ControllerBase
     {
@@ -37,7 +35,6 @@ namespace Sage200Microservice.API.Controllers
         /// Returns a masked snapshot of OAuth tokens (no secrets).
         /// </summary>
         [HttpGet("tokens")]
-        [SkipAudit]
         public async Task<IActionResult> GetTokens(CancellationToken ct)
         {
             // Schema: OAuthTokens(Id, Provider, Audience, ProtectedRefreshToken, AccessTokenExpiresUtc, UpdatedUtc, Scope)
@@ -85,7 +82,6 @@ ORDER BY UpdatedUtc DESC")
         /// </summary>
         [HttpGet("api-logs")]
         [HttpGet("apilogs")] // legacy route used by early dashboard builds
-        [SkipAudit]
         public async Task<IActionResult> GetApiLogs([FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken ct = default)
         {
             take = Math.Clamp(take, 1, 500);
@@ -106,7 +102,6 @@ ORDER BY UpdatedUtc DESC")
         /// </summary>
         [HttpGet("audit-logs")]
         [HttpGet("auditlogs")] // legacy route used by early dashboard builds
-        [SkipAudit]
         public async Task<IActionResult> GetAuditLogs([FromQuery] int skip = 0, [FromQuery] int take = 100, CancellationToken ct = default)
         {
             take = Math.Clamp(take, 1, 500);

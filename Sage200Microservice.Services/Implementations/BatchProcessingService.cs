@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using Sage200Microservice.Data.Models;
 using Sage200Microservice.Data.Repositories;
 using Sage200Microservice.Services.Interfaces;
-using System.Threading;
 
 namespace Sage200Microservice.Services.Implementations
 {
@@ -16,6 +15,13 @@ namespace Sage200Microservice.Services.Implementations
         private readonly IInvoiceStatusHistoryRepository _statusHistoryRepository;
         private readonly ILogger<BatchProcessingService> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the BatchProcessingService class
+        /// </summary>
+        /// <param name="invoiceService">          The invoice service </param>
+        /// <param name="invoiceRepository">       The invoice repository </param>
+        /// <param name="statusHistoryRepository"> The status history repository </param>
+        /// <param name="logger">                  The logger </param>
         public BatchProcessingService(
             IInvoiceService invoiceService,
             IInvoiceRepository invoiceRepository,
@@ -28,12 +34,19 @@ namespace Sage200Microservice.Services.Implementations
             _logger = logger;
         }
 
+        /// <summary>
+        /// Processes a batch of invoices
+        /// </summary>
+        /// <param name="invoiceReferences">      The invoice references to process </param>
+        /// <param name="batchSize">              The batch size </param>
+        /// <param name="parallelProcessing">     Whether to process in parallel </param>
+        /// <param name="maxDegreeOfParallelism"> The maximum degree of parallelism </param>
+        /// <returns> The batch processing result </returns>
         public async Task<BatchProcessingResult> ProcessInvoiceBatchAsync(
             IEnumerable<string> invoiceReferences,
             int batchSize = 100,
             bool parallelProcessing = true,
-            int maxDegreeOfParallelism = 5,
-            CancellationToken ct = default)
+            int maxDegreeOfParallelism = 5)
         {
             var result = new BatchProcessingResult
             {
@@ -44,40 +57,39 @@ namespace Sage200Microservice.Services.Implementations
             try
             {
                 _logger.LogInformation("Starting batch processing of {Count} invoices", result.TotalItems);
-                ct.ThrowIfCancellationRequested();
 
+                // Process invoices in batches
                 var batches = invoiceReferences
-                    .Select((reference, index) => new { reference, index })
-                    .GroupBy(x => x.index / batchSize)
-                    .Select(g => g.Select(x => x.reference).ToList())
+                    .Select((reference, index) => new { Reference = reference, Index = index })
+                    .GroupBy(x => x.Index / batchSize)
+                    .Select(g => g.Select(x => x.Reference).ToList())
                     .ToList();
 
                 result.BatchCount = batches.Count;
+
                 _logger.LogInformation("Split into {BatchCount} batches of size {BatchSize}", result.BatchCount, batchSize);
 
                 foreach (var batch in batches)
                 {
-                    ct.ThrowIfCancellationRequested();
-
                     if (parallelProcessing)
                     {
+                        // Process batch in parallel
                         var parallelOptions = new ParallelOptions
                         {
-                            MaxDegreeOfParallelism = maxDegreeOfParallelism,
-                            CancellationToken = ct
+                            MaxDegreeOfParallelism = maxDegreeOfParallelism
                         };
 
                         await Parallel.ForEachAsync(batch, parallelOptions, async (invoiceReference, token) =>
                         {
-                            await ProcessSingleInvoiceAsync(invoiceReference, result, token);
+                            await ProcessSingleInvoiceAsync(invoiceReference, result);
                         });
                     }
                     else
                     {
+                        // Process batch sequentially
                         foreach (var invoiceReference in batch)
                         {
-                            ct.ThrowIfCancellationRequested();
-                            await ProcessSingleInvoiceAsync(invoiceReference, result, ct);
+                            await ProcessSingleInvoiceAsync(invoiceReference, result);
                         }
                     }
                 }
@@ -88,14 +100,6 @@ namespace Sage200Microservice.Services.Implementations
                 result.Message = $"Successfully processed {result.SuccessCount} out of {result.TotalItems} invoices";
 
                 _logger.LogInformation("Batch processing completed: {Message}", result.Message);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                result.EndTime = DateTime.UtcNow;
-                result.TotalDurationMs = (result.EndTime - result.StartTime).TotalMilliseconds;
-                result.Success = false;
-                result.Message = "Batch processing cancelled.";
-                _logger.LogWarning("Batch processing was cancelled.");
             }
             catch (Exception ex)
             {
@@ -111,12 +115,19 @@ namespace Sage200Microservice.Services.Implementations
             return result;
         }
 
+        /// <summary>
+        /// Creates a batch of invoices
+        /// </summary>
+        /// <param name="invoices">               The invoices to create </param>
+        /// <param name="batchSize">              The batch size </param>
+        /// <param name="parallelProcessing">     Whether to process in parallel </param>
+        /// <param name="maxDegreeOfParallelism"> The maximum degree of parallelism </param>
+        /// <returns> The batch processing result </returns>
         public async Task<BatchProcessingResult> CreateInvoiceBatchAsync(
             IEnumerable<(Invoice Invoice, List<Models.OrderLine> Lines)> invoices,
             int batchSize = 50,
             bool parallelProcessing = true,
-            int maxDegreeOfParallelism = 5,
-            CancellationToken ct = default)
+            int maxDegreeOfParallelism = 5)
         {
             var result = new BatchProcessingResult
             {
@@ -127,40 +138,39 @@ namespace Sage200Microservice.Services.Implementations
             try
             {
                 _logger.LogInformation("Starting batch creation of {Count} invoices", result.TotalItems);
-                ct.ThrowIfCancellationRequested();
 
+                // Process invoices in batches
                 var batches = invoices
-                    .Select((item, index) => new { item, index })
-                    .GroupBy(x => x.index / batchSize)
-                    .Select(g => g.Select(x => x.item).ToList())
+                    .Select((item, index) => new { Item = item, Index = index })
+                    .GroupBy(x => x.Index / batchSize)
+                    .Select(g => g.Select(x => x.Item).ToList())
                     .ToList();
 
                 result.BatchCount = batches.Count;
+
                 _logger.LogInformation("Split into {BatchCount} batches of size {BatchSize}", result.BatchCount, batchSize);
 
                 foreach (var batch in batches)
                 {
-                    ct.ThrowIfCancellationRequested();
-
                     if (parallelProcessing)
                     {
+                        // Process batch in parallel
                         var parallelOptions = new ParallelOptions
                         {
-                            MaxDegreeOfParallelism = maxDegreeOfParallelism,
-                            CancellationToken = ct
+                            MaxDegreeOfParallelism = maxDegreeOfParallelism
                         };
 
                         await Parallel.ForEachAsync(batch, parallelOptions, async (item, token) =>
                         {
-                            await CreateSingleInvoiceAsync(item.Invoice, item.Lines, result, token);
+                            await CreateSingleInvoiceAsync(item.Invoice, item.Lines, result);
                         });
                     }
                     else
                     {
+                        // Process batch sequentially
                         foreach (var item in batch)
                         {
-                            ct.ThrowIfCancellationRequested();
-                            await CreateSingleInvoiceAsync(item.Invoice, item.Lines, result, ct);
+                            await CreateSingleInvoiceAsync(item.Invoice, item.Lines, result);
                         }
                     }
                 }
@@ -171,14 +181,6 @@ namespace Sage200Microservice.Services.Implementations
                 result.Message = $"Successfully created {result.SuccessCount} out of {result.TotalItems} invoices";
 
                 _logger.LogInformation("Batch creation completed: {Message}", result.Message);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                result.EndTime = DateTime.UtcNow;
-                result.TotalDurationMs = (result.EndTime - result.StartTime).TotalMilliseconds;
-                result.Success = false;
-                result.Message = "Batch creation cancelled.";
-                _logger.LogWarning("Batch creation was cancelled.");
             }
             catch (Exception ex)
             {
@@ -194,14 +196,15 @@ namespace Sage200Microservice.Services.Implementations
             return result;
         }
 
-        // -------- internals --------
-
-        private async Task ProcessSingleInvoiceAsync(string invoiceReference, BatchProcessingResult result, CancellationToken ct)
+        /// <summary>
+        /// Processes a single invoice
+        /// </summary>
+        /// <param name="invoiceReference"> The invoice reference </param>
+        /// <param name="result">           The batch processing result </param>
+        private async Task ProcessSingleInvoiceAsync(string invoiceReference, BatchProcessingResult result)
         {
             try
             {
-                ct.ThrowIfCancellationRequested();
-
                 var correlationId = Guid.NewGuid().ToString();
 
                 using (_logger.BeginScope(new Dictionary<string, object>
@@ -212,15 +215,14 @@ namespace Sage200Microservice.Services.Implementations
                 {
                     _logger.LogInformation("Processing invoice {InvoiceReference}", invoiceReference);
 
-                    // Pass CT through to service (so outbound Sage calls can be cancelled)
-                    var statusResult = await _invoiceService.CheckInvoiceStatusAsync(invoiceReference, ct);
+                    var statusResult = await _invoiceService.CheckInvoiceStatusAsync(invoiceReference);
 
                     if (statusResult.Success)
                     {
-                        _logger.LogInformation("Processed {InvoiceReference}: Status={Status}, Outstanding={Outstanding}",
+                        _logger.LogInformation("Successfully processed invoice {InvoiceReference}, Status: {Status}, OutstandingValue: {OutstandingValue}",
                             invoiceReference, statusResult.IsPaid ? "Paid" : "Not Paid", statusResult.OutstandingValue);
 
-                        // Optional repository calls; add ct if your repo supports it.
+                        // Log status history
                         var invoice = await _invoiceRepository.GetByReferenceAsync(invoiceReference);
                         if (invoice != null)
                         {
@@ -230,9 +232,7 @@ namespace Sage200Microservice.Services.Implementations
                                 GrossValue = invoice.GrossValue,
                                 OutstandingValue = statusResult.OutstandingValue,
                                 AllocatedValue = statusResult.AllocatedValue,
-                                Status = statusResult.IsPaid
-                                    ? "Paid"
-                                    : (statusResult.OutstandingValue < invoice.GrossValue ? "PartiallyPaid" : "Unpaid"),
+                                Status = statusResult.IsPaid ? "Paid" : (statusResult.OutstandingValue < invoice.GrossValue ? "PartiallyPaid" : "Unpaid"),
                                 CheckTimestamp = DateTime.UtcNow,
                                 Source = "BatchProcessing",
                                 CheckedBy = "BatchService",
@@ -255,7 +255,7 @@ namespace Sage200Microservice.Services.Implementations
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to process {InvoiceReference}: {Message}", invoiceReference, statusResult.Message);
+                        _logger.LogWarning("Failed to process invoice {InvoiceReference}: {Message}", invoiceReference, statusResult.Message);
 
                         lock (result)
                         {
@@ -270,23 +270,10 @@ namespace Sage200Microservice.Services.Implementations
                     }
                 }
             }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                _logger.LogWarning("Processing cancelled for {InvoiceReference}", invoiceReference);
-                lock (result)
-                {
-                    result.FailureCount++;
-                    result.ProcessedItems.Add(new BatchProcessingItem
-                    {
-                        ItemId = invoiceReference,
-                        Success = false,
-                        Message = "Cancelled"
-                    });
-                }
-            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing invoice {InvoiceReference}", invoiceReference);
+
                 lock (result)
                 {
                     result.FailureCount++;
@@ -301,12 +288,16 @@ namespace Sage200Microservice.Services.Implementations
             }
         }
 
-        private async Task CreateSingleInvoiceAsync(Invoice invoice, List<Models.OrderLine> lines, BatchProcessingResult result, CancellationToken ct)
+        /// <summary>
+        /// Creates a single invoice
+        /// </summary>
+        /// <param name="invoice"> The invoice to create </param>
+        /// <param name="lines">   The invoice lines </param>
+        /// <param name="result">  The batch processing result </param>
+        private async Task CreateSingleInvoiceAsync(Invoice invoice, List<Models.OrderLine> lines, BatchProcessingResult result)
         {
             try
             {
-                ct.ThrowIfCancellationRequested();
-
                 var correlationId = Guid.NewGuid().ToString();
 
                 using (_logger.BeginScope(new Dictionary<string, object>
@@ -318,12 +309,11 @@ namespace Sage200Microservice.Services.Implementations
                 {
                     _logger.LogInformation("Creating invoice {InvoiceReference} for customer {CustomerId}", invoice.InvoiceReference, invoice.CustomerId);
 
-                    // Pass CT through to service (so outbound Sage calls can be cancelled)
-                    var createResult = await _invoiceService.CreateSalesOrderInvoiceAsync(invoice, lines, ct);
+                    var createResult = await _invoiceService.CreateSalesOrderInvoiceAsync(invoice, lines);
 
                     if (createResult.Success)
                     {
-                        _logger.LogInformation("Created {InvoiceReference}: OrderId={OrderId}, OrderRef={OrderReference}",
+                        _logger.LogInformation("Successfully created invoice {InvoiceReference}, OrderId: {OrderId}, OrderReference: {OrderReference}",
                             invoice.InvoiceReference, createResult.OrderId, createResult.OrderReference);
 
                         lock (result)
@@ -339,7 +329,7 @@ namespace Sage200Microservice.Services.Implementations
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to create {InvoiceReference}: {Message}", invoice.InvoiceReference, createResult.Message);
+                        _logger.LogWarning("Failed to create invoice {InvoiceReference}: {Message}", invoice.InvoiceReference, createResult.Message);
 
                         lock (result)
                         {
@@ -352,20 +342,6 @@ namespace Sage200Microservice.Services.Implementations
                             });
                         }
                     }
-                }
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                _logger.LogWarning("Creation cancelled for {InvoiceReference}", invoice.InvoiceReference);
-                lock (result)
-                {
-                    result.FailureCount++;
-                    result.ProcessedItems.Add(new BatchProcessingItem
-                    {
-                        ItemId = invoice.InvoiceReference,
-                        Success = false,
-                        Message = "Cancelled"
-                    });
                 }
             }
             catch (Exception ex)

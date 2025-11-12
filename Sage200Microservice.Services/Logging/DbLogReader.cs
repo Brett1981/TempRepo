@@ -31,24 +31,24 @@ FROM dbo.ApiLogs
 ORDER BY Id DESC
 OFFSET @skip ROWS
 FETCH NEXT @take ROWS ONLY;";
-        AddParam(cmd, "@skip", skip);
-        AddParam(cmd, "@take", take);
+        var pSkip = cmd.CreateParameter(); pSkip.ParameterName = "@skip"; pSkip.Value = skip; cmd.Parameters.Add(pSkip);
+        var pTake = cmd.CreateParameter(); pTake.ParameterName = "@take"; pTake.Value = take; cmd.Parameters.Add(pTake);
 
         await using var rdr = await cmd.ExecuteReaderAsync(ct);
         while (await rdr.ReadAsync(ct))
         {
-            var req = GetString(rdr, "RequestPayload") ?? string.Empty;
-            var res = GetString(rdr, "ResponsePayload") ?? string.Empty;
+            var req = rdr.GetString(rdr.GetOrdinal("RequestPayload"));
+            var res = rdr.GetString(rdr.GetOrdinal("ResponsePayload"));
 
             var dto = new ApiLogDto
             {
-                Id = GetInt32FromAny(rdr, "Id") ?? 0,
-                Endpoint = GetString(rdr, "Endpoint") ?? string.Empty,
-                RequestMethod = GetString(rdr, "RequestMethod") ?? string.Empty,
-                HttpStatusCode = GetInt32FromAny(rdr, "HttpStatusCode") ?? 0,
-                Timestamp = GetDateTime(rdr, "Timestamp") ?? DateTime.UtcNow,
-                CallerId = GetString(rdr, "CallerId") ?? string.Empty,
-                ApiType = GetString(rdr, "ApiType") ?? string.Empty
+                Id = rdr.GetInt32(rdr.GetOrdinal("Id")),
+                Endpoint = rdr.GetString(rdr.GetOrdinal("Endpoint")),
+                RequestMethod = rdr.GetString(rdr.GetOrdinal("RequestMethod")),
+                HttpStatusCode = rdr.GetInt32(rdr.GetOrdinal("HttpStatusCode")),
+                Timestamp = rdr.GetDateTime(rdr.GetOrdinal("Timestamp")),
+                CallerId = rdr.GetString(rdr.GetOrdinal("CallerId")),
+                ApiType = rdr.GetString(rdr.GetOrdinal("ApiType"))
             };
 
             // Server-side decrypt if in token format; else pass-through.
@@ -93,98 +93,38 @@ FROM dbo.AuditLogs
 ORDER BY Id DESC
 OFFSET @skip ROWS
 FETCH NEXT @take ROWS ONLY;";
-        AddParam(cmd, "@skip", skip);
-        AddParam(cmd, "@take", take);
+        var pSkip = cmd.CreateParameter(); pSkip.ParameterName = "@skip"; pSkip.Value = skip; cmd.Parameters.Add(pSkip);
+        var pTake = cmd.CreateParameter(); pTake.ParameterName = "@take"; pTake.Value = take; cmd.Parameters.Add(pTake);
 
         await using var rdr = await cmd.ExecuteReaderAsync(ct);
         while (await rdr.ReadAsync(ct))
         {
             var dto = new AuditLogDto
             {
-                Id = GetInt64FromAny(rdr, "Id") ?? 0L,
-                Timestamp = GetDateTime(rdr, "Timestamp") ?? DateTime.UtcNow,
-
-                // These may be INT in some envs, NVARCHAR in others — read defensively:
-                EventType = GetInt32FromAny(rdr, "EventType") ?? 0,
-                Category = GetInt32FromAny(rdr, "Category") ?? 0,
-                Severity = GetInt32FromAny(rdr, "Severity") ?? 0,
-
-                UserId = GetString(rdr, "UserId"),
-                ClientId = GetString(rdr, "ClientId"),
-                IpAddress = GetString(rdr, "IpAddress") ?? string.Empty,
-                Resource = GetString(rdr, "Resource") ?? string.Empty,
-                Action = GetString(rdr, "Action") ?? string.Empty,
-
-                Status = GetInt32FromAny(rdr, "Status") ?? 0,
-                Description = GetString(rdr, "Description") ?? string.Empty,
-                Details = GetString(rdr, "Details") ?? string.Empty,
-                CorrelationId = GetString(rdr, "CorrelationId") ?? string.Empty,
-
-                HttpMethod = GetString(rdr, "HttpMethod") ?? string.Empty,
-                UrlPath = GetString(rdr, "UrlPath") ?? string.Empty,
-
-                HttpStatusCode = GetInt32FromAny(rdr, "HttpStatusCode"),
-                DurationMs = GetInt64FromAny(rdr, "DurationMs"),
-                UserAgent = GetString(rdr, "UserAgent") ?? string.Empty,
-                ReferenceId = GetString(rdr, "ReferenceId"),
-                ReferenceName = GetString(rdr, "ReferenceName")
+                Id = rdr.GetInt64(0),
+                Timestamp = rdr.GetDateTime(1),
+                EventType = rdr.GetInt32(2),
+                Category = rdr.GetInt32(3),
+                Severity = rdr.GetInt32(4),
+                UserId = rdr.IsDBNull(5) ? null : rdr.GetString(5),
+                ClientId = rdr.IsDBNull(6) ? null : rdr.GetString(6),
+                IpAddress = rdr.GetString(7),
+                Resource = rdr.GetString(8),
+                Action = rdr.GetString(9),
+                Status = rdr.GetInt32(10),
+                Description = rdr.GetString(11),
+                Details = rdr.GetString(12),
+                CorrelationId = rdr.GetString(13),
+                HttpMethod = rdr.GetString(14),
+                UrlPath = rdr.GetString(15),
+                HttpStatusCode = rdr.IsDBNull(16) ? null : rdr.GetInt32(16),
+                DurationMs = rdr.IsDBNull(17) ? null : rdr.GetInt64(17),
+                UserAgent = rdr.GetString(18),
+                ReferenceId = rdr.IsDBNull(19) ? null : rdr.GetString(19),
+                ReferenceName = rdr.IsDBNull(20) ? null : rdr.GetString(20)
             };
-
             list.Add(dto);
         }
         return list;
-    }
-
-    // ---------- helpers ----------
-
-    private static void AddParam(DbCommand cmd, string name, object? value)
-    {
-        var p = cmd.CreateParameter();
-        p.ParameterName = name;
-        p.Value = value ?? DBNull.Value;
-        cmd.Parameters.Add(p);
-    }
-
-    private static string? GetString(DbDataReader r, string name)
-    {
-        var ord = r.GetOrdinal(name);
-        if (r.IsDBNull(ord)) return null;
-        // If actual field type is not string, ToString() still yields a sensible value
-        return r.GetValue(ord)?.ToString();
-    }
-
-    private static DateTime? GetDateTime(DbDataReader r, string name)
-    {
-        var ord = r.GetOrdinal(name);
-        if (r.IsDBNull(ord)) return null;
-
-        var v = r.GetValue(ord);
-        if (v is DateTime dt) return dt;
-        if (DateTime.TryParse(v?.ToString(), out var parsed)) return parsed;
-        return null;
-    }
-
-    private static int? GetInt32FromAny(DbDataReader r, string name)
-    {
-        var ord = r.GetOrdinal(name);
-        if (r.IsDBNull(ord)) return null;
-
-        var v = r.GetValue(ord);
-        if (v is int i) return i;
-        if (v is long l && l <= int.MaxValue && l >= int.MinValue) return (int)l;
-        if (int.TryParse(v?.ToString(), out var parsed)) return parsed;
-        return null;
-    }
-
-    private static long? GetInt64FromAny(DbDataReader r, string name)
-    {
-        var ord = r.GetOrdinal(name);
-        if (r.IsDBNull(ord)) return null;
-
-        var v = r.GetValue(ord);
-        if (v is long l) return l;
-        if (v is int i) return (long)i;
-        if (long.TryParse(v?.ToString(), out var parsed)) return parsed;
-        return null;
     }
 }

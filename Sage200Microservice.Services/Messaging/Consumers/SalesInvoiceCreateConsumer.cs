@@ -4,9 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Sage200Microservice.Data.Models; // Added for AuditLog and enums
 using Sage200Microservice.Data.Repositories;
-using Sage200Microservice.Services.Infrastructure;
+using Sage200Microservice.Data.Models; // Added for AuditLog and enums
 using Sage200Microservice.Services.Interfaces;
 using Sage200Microservice.Services.Messaging.Contracts;
 using Sage200Microservice.Services.Models; // For SageApiSettings
@@ -18,8 +17,6 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Sage200Microservice.Services.Processing; // ConsumerExecutionWrapper
-using Sage200Microservice.Services.Messaging.Consumers.Common; // TryGetLastValue
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,8 +32,6 @@ namespace Sage200Microservice.Services.Messaging.Consumers
         private readonly KafkaOptions _kafkaOptions;
         private readonly SageApiSettings _sageApiSettings;
         private readonly JsonSerializerOptions _jsonOptions;
-        private readonly IHostEnvironment _env;
-        private readonly ConsumerExecutionWrapper _exec;
 
         // Wrapper for DLQ messages
         private record DlqEnvelope(string OriginalPayload, Dictionary<string, string> Headers);
@@ -47,9 +42,7 @@ namespace Sage200Microservice.Services.Messaging.Consumers
             IKafkaConsumer consumer,
             IEventPublisher dlqPublisher,
             IOptions<KafkaOptions> kafkaOptions,
-            IOptions<SageApiSettings> sageApiSettings,
-            IHostEnvironment env,
-            ConsumerExecutionWrapper exec)
+            IOptions<SageApiSettings> sageApiSettings)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
@@ -57,8 +50,6 @@ namespace Sage200Microservice.Services.Messaging.Consumers
             _dlqPublisher = dlqPublisher;
             _kafkaOptions = kafkaOptions.Value;
             _sageApiSettings = sageApiSettings.Value;
-            _env = env;
-            _exec = exec;
 
             _jsonOptions = new JsonSerializerOptions
             {
@@ -68,7 +59,6 @@ namespace Sage200Microservice.Services.Messaging.Consumers
             };
         }
 
-        /// <inheritdoc />
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             var topic = _kafkaOptions.InvoiceCreateTopic ?? "MDM_Invoices";
@@ -78,6 +68,7 @@ namespace Sage200Microservice.Services.Messaging.Consumers
             while (!stoppingToken.IsCancellationRequested)
             {
                 ConsumeResult<Ignore, string>? consumeResult = null;
+                string? correlationId = null; // Keep correlationId accessible for final exception handler
 
                 try
                 {
@@ -90,62 +81,55 @@ namespace Sage200Microservice.Services.Messaging.Consumers
                         continue;
                     }
 
-                    var headers = consumeResult.Message.Headers;
-                    var correlationId = GetHeaderValue(headers, "correlation_id") ?? Guid.NewGuid().ToString();
-                    var payload = consumeResult.Message.Value;
+                    // Ensure correlation ID for logging scope and auditing
+                    correlationId = GetHeaderValue(consumeResult.Message.Headers, "correlation_id") ?? Guid.NewGuid().ToString();
+                    _logger.LogInformation("Received message from {TopicPartitionOffset} with CorrelationId {CorrelationId}",
+                        consumeResult.TopicPartitionOffset, correlationId);
 
-                    // Standard wrapper: (10s → 30s → 2m) retry, attempt logging, DLQ on exhaustion
-                    await _exec.ExecuteAsync(
-                        correlationId: correlationId,
-                        entityType: "Invoice",
-                        originalTopic: consumeResult.Topic,
-                        dlqTopic: $"{consumeResult.Topic}_DLQ",
-                        partition: consumeResult.Partition.Value,
-                        offset: consumeResult.Offset.Value,
-                        originalPayload: payload,
-                        handler: async ct =>
-                        {
-                            using var scope = _scopeFactory.CreateScope();
-                            var salesInvoicesService = scope.ServiceProvider.GetRequiredService<ISalesInvoicesService>();
-                            var idempotencyRepo = scope.ServiceProvider.GetRequiredService<IIdempotencyRecordRepository>();
-                            var auditLogService = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
 
-                            // NEW: push ambient routing context from Kafka headers (fallback to config).
-                            var hdrs = consumeResult.Message.Headers;
-                            var site = hdrs.TryGetLastValue(_sageApiSettings.SiteHeaderName) ?? _sageApiSettings.SiteId;
-                            var company = hdrs.TryGetLastValue(_sageApiSettings.CompanyHeaderName) ?? _sageApiSettings.CompanyId;
+                    using var scope = _scopeFactory.CreateScope();
+                    var salesInvoicesService = scope.ServiceProvider.GetRequiredService<ISalesInvoicesService>();
+                    var idempotencyRepo = scope.ServiceProvider.GetRequiredService<IIdempotencyRecordRepository>();
+                    var auditLogService = scope.ServiceProvider.GetRequiredService<IAuditLogService>(); // Resolve Audit service
 
-                            using var __ambient = SageCallContext.Push(site, company, apiKey: null); // never send API key to Sage
-
-                            await ProcessMessageAsync(
-                                salesInvoicesService, idempotencyRepo, auditLogService,
-                                consumeResult, correlationId, ct);
-                        },
-                        isTransient: static ex =>
-                            ex is TimeoutException
-                            || ex is HttpRequestException
-                            || ex.GetType().Name.Contains("SqlException", StringComparison.OrdinalIgnoreCase)
-                            || ex.GetType().Name.Contains("DbUpdateException", StringComparison.OrdinalIgnoreCase),
-                        ct: stoppingToken);
-
-                    // Commit after wrapper returns (either success OR DLQ publish completed in wrapper)
-                    await _consumer.CommitAsync(consumeResult);
+                    // Pass necessary resolved services to ProcessMessageAsync
+                    await ProcessMessageAsync(salesInvoicesService, idempotencyRepo, auditLogService, consumeResult, correlationId, stoppingToken);
                 }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                catch (OperationCanceledException)
                 {
+                    _logger.LogInformation("Kafka consumption loop cancelled for {Topic}.", topic);
                     break;
                 }
-                catch (Exception ex)
+                catch (Exception ex) // Catch-all for unexpected errors *outside* ProcessMessageAsync
                 {
-                    _logger.LogError(ex, "Unhandled exception in consumer loop; backing off 30s.");
+                    _logger.LogError(ex, "CRITICAL: Unhandled exception in Kafka consumer loop for topic {Topic}. Offset: {Offset}. CorrelationId: {CorrelationId}. Consumer will attempt to continue.",
+                        topic, consumeResult?.Offset, correlationId ?? "N/A");
+
+                    // Best effort DLQ for loop-level exceptions if we have the message
+                    if (consumeResult != null)
+                    {
+                        // Resolve dependencies needed for HandleFailureAsync if possible (might fail if DI container is broken)
+                        try
+                        {
+                            using var errorScope = _scopeFactory.CreateScope();
+                            var errorAuditSvc = errorScope.ServiceProvider.GetRequiredService<IAuditLogService>();
+                            await HandleFailureAsync(errorAuditSvc, // Use resolved service
+                                "UnhandledLoopException", ex.Message, consumeResult, consumeResult.Message.Value,
+                                consumeResult.Message.Headers, correlationId ?? "N/A", stoppingToken);
+                        }
+                        catch (Exception dlqEx)
+                        {
+                            _logger.LogError(dlqEx, "Failed even to DLQ message after unhandled loop exception. Offset {Offset} may be stuck.", consumeResult.Offset);
+                        }
+                    }
+                    // Avoid fast failure loop if the error persists (e.g., config error)
                     await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
                 }
-            }
+            } // end while loop
 
             _consumer.Close();
-            _logger.LogInformation("SalesInvoiceCreateConsumer stopped for topic: {Topic}", topic);
+            _logger.LogInformation("SalesInvoiceCreateConsumer stopped for topic {Topic}.", topic);
         }
-
 
         private async Task ProcessMessageAsync(
             ISalesInvoicesService salesInvoicesService,
@@ -213,15 +197,7 @@ namespace Sage200Microservice.Services.Messaging.Consumers
                     }
 
                     if (string.IsNullOrWhiteSpace(idempotencyKey)) idempotencyKey = null; // Should not happen due to check above, but defensive
-                    // === NEW: resolve API key (header → dev fallback) ===
-                    string? apiKey = GetHeaderValue(headers, _sageApiSettings.ApiKeyHeaderName);
-                    if (string.IsNullOrWhiteSpace(apiKey) && _env.IsDevelopment() && _sageApiSettings.AllowDevelopmentFallbackApiKey)
-                    {
-                        apiKey = _sageApiSettings.DevelopmentDefaultApiKey;
-                    }
 
-                    // === NEW: push ambient context for downstream HttpClient calls ===
-                    using var __ambient = SageCallContext.Push(site, company, apiKey);
                     var requestContext = new RequestContext(site, company, idempotencyKey, correlationId);
                     _logger.LogDebug("RequestContext created: Site={SiteId} (Source: {SiteSource}), Company={CompanyId} (Source: {CompanySource}), IdemKeyPresent={IdemKeyPresent}",
                         requestContext.SiteId, GetSource(headers, "x-site", _sageApiSettings.SiteId),
@@ -231,34 +207,7 @@ namespace Sage200Microservice.Services.Messaging.Consumers
                     // 3. Map Kafka DTO to Service DTO
                     var serviceDto = MapToServiceDto(kafkaDto);
                     _logger.LogDebug("Mapped Kafka DTO to Service DTO.");
-                    // === UAT FAULT INJECTION (guarded by config) ===
-                    // If enabled and a test header is present, simulate the requested failure mode.
-                    // X-Fault values supported: SAGE_503_ONCE | DB_TIMEOUT | INVALID_PAYLOAD
-                    if (_sageApiSettings.EnableFaultInjection)
-                    {
-                        var faultKey = GetHeaderValue(headers, "X-Fault");
-                        if (!string.IsNullOrWhiteSpace(faultKey))
-                        {
-                            switch (faultKey.Trim().ToUpperInvariant())
-                            {
-                                case "SAGE_503_ONCE":
-                                    // Simulate a transient downstream failure (HTTP 503) to exercise retry backoff.
-                                    throw new HttpRequestException(
-                                        "Simulated Sage 503",
-                                        inner: null,
-                                        statusCode: System.Net.HttpStatusCode.ServiceUnavailable);
 
-                                case "DB_TIMEOUT":
-                                    // Simulate a transient database timeout to exercise retry backoff.
-                                    throw new TimeoutException("Simulated DB timeout");
-
-                                case "INVALID_PAYLOAD":
-                                    // Simulate a permanent error; wrapper will route directly to DLQ (no retries).
-                                    throw new InvalidOperationException("Simulated permanent validation failure");
-                            }
-                        }
-                    }
-                    // === END FAULT INJECTION ===
                     // 4. Call Service
                     _logger.LogInformation("Calling SalesInvoicesService.CreateAsync with IdempotencyKey: {IdemKeyStatus}...", idempotencyKey != null ? "Present" : "N/A");
                     SalesCreateResult result = await salesInvoicesService.CreateAsync(serviceDto, requestContext, stoppingToken);

@@ -7,25 +7,71 @@ namespace Sage200Microservice.Services.Interfaces
     /// </summary>
     public interface IApiKeyService
     {
-        Task<ApiKey?> GetByKeyAsync(string key, CancellationToken ct = default);
+        /// <summary>
+        /// Gets an API key by its key value
+        /// </summary>
+        /// <param name="key"> The key value </param>
+        /// <returns> The API key, or null if not found </returns>
+        Task<ApiKey> GetByKeyAsync(string key);
 
-        Task<ApiKey?> GetByIdAsync(int id, CancellationToken ct = default);
+        /// <summary>
+        /// Gets an API key by its ID
+        /// </summary>
+        /// <param name="id"> The API key ID </param>
+        /// <returns> The API key, or null if not found </returns>
+        Task<ApiKey> GetByIdAsync(int id);
 
-        /// <summary>Returns all API keys (admin view). If your repo pages, this should aggregate or be used for small datasets only.</summary>
-        Task<List<ApiKey>> GetAllAsync(CancellationToken ct = default);
+        /// <summary>
+        /// Gets all API keys
+        /// </summary>
+        /// <returns> A list of API keys </returns>
+        Task<List<ApiKey>> GetAllAsync();
 
-        Task<ApiKey> CreateAsync(string clientName, DateTime? expiresAt = null, string? allowedIpAddresses = null, CancellationToken ct = default);
+        /// <summary>
+        /// Creates a new API key
+        /// </summary>
+        /// <param name="clientName">         The client name </param>
+        /// <param name="expiresAt">          The expiration date (optional) </param>
+        /// <param name="allowedIpAddresses">
+        /// Comma-separated list of allowed IP addresses or CIDR ranges (optional)
+        /// </param>
+        /// <returns> The created API key </returns>
+        Task<ApiKey> CreateAsync(string clientName, DateTime? expiresAt = null, string allowedIpAddresses = null);
 
-        Task<ApiKey> UpdateAsync(ApiKey apiKey, CancellationToken ct = default);
+        /// <summary>
+        /// Updates an API key
+        /// </summary>
+        /// <param name="apiKey"> The API key to update </param>
+        /// <returns> The updated API key </returns>
+        Task<ApiKey> UpdateAsync(ApiKey apiKey);
 
-        Task<bool> DeactivateAsync(int id, CancellationToken ct = default);
+        /// <summary>
+        /// Deactivates an API key
+        /// </summary>
+        /// <param name="id"> The API key ID </param>
+        /// <returns> True if successful, false otherwise </returns>
+        Task<bool> DeactivateAsync(int id);
 
-        Task<ApiKey?> RotateAsync(int id, int gracePeriodDays = 7, CancellationToken ct = default);
+        /// <summary>
+        /// Rotates an API key
+        /// </summary>
+        /// <param name="id">              The API key ID </param>
+        /// <param name="gracePeriodDays"> The number of days the old key remains valid </param>
+        /// <returns> The updated API key with the new key value </returns>
+        Task<ApiKey> RotateAsync(int id, int gracePeriodDays = 7);
 
-        /// <summary>Returns the ApiKey entity if the supplied key is valid (current or previous-in-grace); otherwise null.</summary>
-        Task<ApiKey?> ValidateAsync(string key, CancellationToken ct = default);
+        /// <summary>
+        /// Validates an API key
+        /// </summary>
+        /// <param name="key"> The key value </param>
+        /// <returns> The API key if valid, null otherwise </returns>
+        Task<ApiKey> ValidateAsync(string key);
 
-        /// <summary>Records usage (LastUsedAt). Returns true if a matching current/previous key was updated.</summary>
-        Task<bool> RecordUsageAsync(string key, CancellationToken ct = default);
+        /// <summary>
+        /// Records usage of an API key
+        /// </summary>
+        /// <param name="key"> The key value </param>
+        /// <returns> True if successful, false otherwise </returns>
+        Task<bool> RecordUsageAsync(string key);
     }
 }

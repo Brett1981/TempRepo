@@ -29,29 +29,29 @@ namespace Sage200Microservice.API.Controllers
         /// Lightweight probe to verify ExternalIdLinks table, indexes and row counts.
         /// </summary>
         [HttpGet("links")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> GetLinksHealth(CancellationToken ct)
         {
+            // Table existence check via EF metadata  a simple count.
             var provider = _context.Database.ProviderName ?? "unknown";
 
-            long total;
+            var total = 0L;
             try
             {
                 total = await _context.ExternalIdLinks.LongCountAsync(ct);
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new
+                return StatusCode(500, new
                 {
                     status = "error",
                     provider,
                     message = "ExternalIdLinks not accessible",
                     exception = ex.GetType().Name,
-                    details = ex.Message
+                    ex.Message
                 });
             }
 
+            // Basic split counts to sanity-check both columns.
             var withSageId = await _context.ExternalIdLinks.LongCountAsync(x => x.SageId != null, ct);
             var withSageUrn = await _context.ExternalIdLinks.LongCountAsync(x => x.SageUrn != null, ct);
 
@@ -68,18 +68,15 @@ namespace Sage200Microservice.API.Controllers
         /// Quick check that ApiKeys exist, so ExternalIdLinks inserts won't hit FK.
         /// </summary>
         [HttpGet("keys")]
-        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetApiKeysHealth(CancellationToken ct)
         {
             var count = await _context.Set<ApiKey>().CountAsync(ct);
-
             var sample = await _context.Set<ApiKey>()
-                .AsNoTracking()
-                .OrderBy(k => k.Id)
-                .Select(k => new { k.Id })
-                .Take(3)
-                .ToListAsync(ct);
-
+                                  .AsNoTracking()
+                                  .OrderBy(k => k.Id)
+                                  .Select(k => new { k.Id })
+                                  .Take(3)
+                                  .ToListAsync(ct);
             return Ok(new { status = "ok", apiKeys = new { count, sample } });
         }
 
@@ -90,18 +87,17 @@ namespace Sage200Microservice.API.Controllers
         /// <response code="200"> Returns the health status </response>
         /// <response code="500"> If there was an error checking the health status </response>
         [HttpGet]
-        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         [ProducesResponseType(typeof(HealthStatus), StatusCodes.Status200OK)]
         [ProducesResponseType(typeof(HealthStatus), StatusCodes.Status500InternalServerError)]
-        public async Task<ActionResult<HealthStatus>> Get(CancellationToken ct)
+        public async Task<ActionResult<HealthStatus>> Get()
         {
             try
             {
                 // Check database connectivity
-                var canConnect = await _context.Database.CanConnectAsync(ct);
+                var canConnect = await _context.Database.CanConnectAsync();
 
                 // Check if migrations are applied
-                var pendingMigrations = await _context.Database.GetPendingMigrationsAsync(ct);
+                var pendingMigrations = await _context.Database.GetPendingMigrationsAsync();
                 var hasPendingMigrations = pendingMigrations.Any();
 
                 return Ok(new HealthStatus
@@ -114,7 +110,7 @@ namespace Sage200Microservice.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, new HealthStatus
+                return StatusCode(500, new HealthStatus
                 {
                     Status = "Unhealthy",
                     DatabaseConnected = false,
@@ -134,7 +130,7 @@ namespace Sage200Microservice.API.Controllers
         /// The overall status of the microservice
         /// </summary>
         /// <example> Healthy </example>
-        public string Status { get; set; } = string.Empty;
+        public string Status { get; set; }
 
         /// <summary>
         /// Indicates whether the database connection is working
@@ -149,7 +145,7 @@ namespace Sage200Microservice.API.Controllers
         /// <summary>
         /// The error message if the status is unhealthy
         /// </summary>
-        public string ErrorMessage { get; set; } = string.Empty;
+        public string ErrorMessage { get; set; }
 
         /// <summary>
         /// The timestamp of the health check
